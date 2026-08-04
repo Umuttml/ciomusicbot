@@ -190,14 +190,13 @@
                 </div>
             </div>
 
-            <!-- Yerel Tarayıcı Oynatıcısı -->
             <audio id="audio-player" controls style="display: block;"></audio>
         </div>
 
         <div class="card">
             <span class="card-title">ŞARKI ARA VE DİNLE</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Şarkı veya sanatçı yazın">
+                <input type="text" id="search-input" placeholder="Şarkı adı yazın (Örn: Sebebi Var)">
                 <button onclick="searchSong()">Oynat</button>
             </div>
         </div>
@@ -237,6 +236,13 @@
 
         const player = document.getElementById('audio-player');
 
+        // Güvenilir Invidious API Sunucuları
+        const INVIDIOUS_INSTANCES = [
+            "https://inv.tux.pizza",
+            "https://invidious.nerdvpn.de",
+            "https://iv.melmac.ge"
+        ];
+
         function switchTab(tabName, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -262,44 +268,41 @@
             document.getElementById('song-title').innerText = "Aranıyor...";
             document.getElementById('song-artist').innerText = query;
 
-            try {
-                // Invidious / Piped API tüneli - Doğrudan ses akışı çeker, CORS ve iframe engellerini aşar
-                const res = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`);
-                const data = await res.json();
+            let success = false;
 
-                if(data.items && data.items.length > 0) {
-                    const item = data.items[0];
-                    const videoId = item.url.split("v=")[1];
+            // Sunuculardan biri yanıt verene kadar sırayla dener (Yedekli Yapı)
+            for (const instance of INVIDIOUS_INSTANCES) {
+                try {
+                    const res = await fetch(`${instance}/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+                    const data = await res.json();
 
-                    // Ses akış detaylarını al
-                    const streamRes = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
-                    const streamData = await streamRes.json();
-
-                    // Sadece ses (audio) formatlarını filtrele
-                    const audioStreams = streamData.audioStreams;
-                    if(audioStreams && audioStreams.length > 0) {
-                        document.getElementById('song-title').innerText = streamData.title;
-                        document.getElementById('song-artist').innerText = streamData.uploader;
-                        document.getElementById('player-badge').innerText = "• Çalıyor";
+                    if (data && data.length > 0) {
+                        const video = data[0];
                         
-                        if(streamData.thumbnailUrl) {
-                            document.getElementById('song-cover').innerHTML = `<img src="${streamData.thumbnailUrl}" alt="Cover">`;
+                        document.getElementById('song-title').innerText = video.title;
+                        document.getElementById('song-artist').innerText = video.author;
+                        document.getElementById('player-badge').innerText = "• Çalıyor";
+
+                        if (video.videoThumbnails && video.videoThumbnails.length > 0) {
+                            document.getElementById('song-cover').innerHTML = `<img src="${video.videoThumbnails[0].url}" alt="Cover">`;
                         }
 
-                        // Doğrudan ses akış URL'sini ver
-                        player.src = audioStreams[0].url;
+                        // Doğrudan Invidious ses akış adresi (Şarkının TAMAMI)
+                        player.src = `${instance}/latest_version?id=${video.videoId}&itag=140`;
                         player.load();
                         player.play();
-                    } else {
-                        throw new Error("Ses akışı bulunamadı");
+                        
+                        success = true;
+                        break;
                     }
-                } else {
-                    document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
-                    document.getElementById('song-artist').innerText = "Farklı bir isim deneyin.";
+                } catch (err) {
+                    console.log(`${instance} bağlantı hatası, sonraki deneniyor...`);
                 }
-            } catch (err) {
-                document.getElementById('song-title').innerText = "Arama Hatası";
-                document.getElementById('song-artist').innerText = "Tekrar deneyin veya farklı bir şarkı yazın.";
+            }
+
+            if (!success) {
+                document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
+                document.getElementById('song-artist').innerText = "Tekrar Oynat'a basın veya farklı arama yapın.";
             }
         }
     </script>
