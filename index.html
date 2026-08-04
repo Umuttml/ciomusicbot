@@ -114,17 +114,7 @@
         .song-details h4 { font-size: 13px; margin-bottom: 2px; }
         .song-details p { font-size: 10px; color: var(--subtext-color); }
 
-        audio { width: 100%; height: 32px; margin-top: 4px; }
-
-        iframe {
-            width: 100%;
-            height: 280px;
-            border: none;
-            border-radius: 12px;
-            display: none;
-            margin-top: 8px;
-            background: #000;
-        }
+        audio { width: 100%; height: 36px; margin-top: 4px; }
 
         .search-box { display: flex; gap: 6px; }
         .search-box input {
@@ -198,17 +188,14 @@
                 </div>
             </div>
 
-            <!-- HTML5 Radyo Oyuncusu -->
+            <!-- HTML5 Tek Oynatıcı -->
             <audio id="audio-player" controls style="display: block;"></audio>
-
-            <!-- YouTube Arama Ekranı -->
-            <iframe id="web-player" allow="autoplay; encrypted-media"></iframe>
         </div>
 
         <div class="card">
-            <span class="card-title">ŞARKI ARA VE DİNLE</span>
+            <span class="card-title">AÇIK MÜZİK KÜTÜPHANESİ ARA</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Şarkı adı yazın (örn: Sebebi Var)">
+                <input type="text" id="search-input" placeholder="Arama yapın (Örn: Rock, Chill, Jazz)">
                 <button onclick="searchSong()">Oynat</button>
             </div>
         </div>
@@ -247,7 +234,6 @@
         }
 
         const player = document.getElementById('audio-player');
-        const webPlayer = document.getElementById('web-player');
 
         function switchTab(tabName, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -257,10 +243,6 @@
         }
 
         function playRadio(name, url) {
-            webPlayer.style.display = "none";
-            webPlayer.src = "";
-            player.style.display = "block";
-
             document.getElementById('song-title').innerText = name;
             document.getElementById('song-artist').innerText = "Canlı Radyo Yayını";
             document.getElementById('player-badge').innerText = "• Canlı";
@@ -270,20 +252,35 @@
             player.play().catch(e => console.log("Oynatma hatası:", e));
         }
 
-        function searchSong() {
+        async function searchSong() {
             const query = document.getElementById('search-input').value.trim();
             if(!query) return;
 
-            player.pause();
-            player.style.display = "none";
-            webPlayer.style.display = "block";
+            document.getElementById('song-title').innerText = "Aranıyor...";
+            document.getElementById('song-artist').innerText = query;
 
-            document.getElementById('song-title').innerText = query;
-            document.getElementById('song-artist').innerText = "Arama Sonuçları";
-            document.getElementById('player-badge').innerText = "• Arama Yapıldı";
+            try {
+                // Jamendo Açık Müzik API - CORS engeline takılmaz, doğrudan MP3 verir
+                const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d30c08&format=json&limit=1&search=${encodeURIComponent(query)}`);
+                const data = await res.json();
 
-            // YouTube Mobil Arama Ekranı Tüneli (Güvenlik engeline takılmaz)
-            webPlayer.src = `https://m.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+                if(data.results && data.results.length > 0) {
+                    const track = data.results[0];
+                    document.getElementById('song-title').innerText = track.name;
+                    document.getElementById('song-artist').innerText = track.artist_name;
+                    document.getElementById('player-badge').innerText = "• Çalıyor";
+
+                    player.src = track.audio;
+                    player.load();
+                    player.play();
+                } else {
+                    document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
+                    document.getElementById('song-artist').innerText = "Farklı bir kelime deneyin.";
+                }
+            } catch (err) {
+                document.getElementById('song-title').innerText = "Bağlantı Hatası";
+                document.getElementById('song-artist').innerText = "Tekrar deneyin.";
+            }
         }
     </script>
 </body>
