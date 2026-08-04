@@ -119,44 +119,63 @@
         const player = document.getElementById('audio-player');
 
         async function searchMusic() {
-            const query = document.getElementById('search-input').value.trim();
-            const btn = document.getElementById('search-btn');
-            if(!query) return;
+    const query = document.getElementById("search-input").value.trim();
+    const btn = document.getElementById("search-btn");
 
-            btn.disabled = true;
-            document.getElementById('song-title').innerText = "Aranıyor...";
-            document.getElementById('song-artist').innerText = "Render sunucusuna bağlanılıyor...";
-            document.getElementById('player-badge').innerText = "• Yükleniyor";
+    if (!query) return;
 
-            try {
-                const res = await fetch(`${API_URL}/api/search?q=${encodeURIComponent(query)}`);
-                const data = await res.json();
+    btn.disabled = true;
 
-                if (data.success && data.url) {
-                    document.getElementById('song-title').innerText = data.title;
-                    document.getElementById('song-artist').innerText = data.artist || "Cio Müzik Engine";
-                    document.getElementById('player-badge').innerText = "• Çalıyor";
+    document.getElementById("song-title").innerText = "Aranıyor...";
+    document.getElementById("song-artist").innerText = "API'ye bağlanılıyor...";
+    document.getElementById("player-badge").innerText = "• Yükleniyor";
 
-                    if (data.thumbnail) {
-                        document.getElementById('song-cover').innerHTML = `<img src="${data.thumbnail}">`;
-                    }
+    try {
 
-                    player.src = data.url;
-                    player.load();
-                    player.play();
-                } else {
-                    document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
-                    document.getElementById('song-artist').innerText = "Tekrar deneyin.";
-                    document.getElementById('player-badge').innerText = "• Hata";
-                }
-            } catch (e) {
-                console.error(e);
-                document.getElementById('song-title').innerText = "Bağlantı Hatası";
-                document.getElementById('song-artist').innerText = "Sunucu yanıt vermedi.";
-                document.getElementById('player-badge').innerText = "• Hata";
-            } finally {
-                btn.disabled = false;
-            }
+        const res = await fetch("http://localhost:3000/api/music/search", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                query: query
+            })
+        });
+
+        const json = await res.json();
+
+        if (!json.success) {
+            throw new Error(json.message);
+        }
+
+        const track = json.data;
+
+        document.getElementById("song-title").innerText = track.title;
+        document.getElementById("song-artist").innerText = track.artist;
+        document.getElementById("player-badge").innerText = "• Çalıyor";
+
+        if (track.cover) {
+            document.getElementById("song-cover").innerHTML =
+                `<img src="${track.cover}">`;
+        }
+
+        player.src = track.media_url;
+        player.load();
+
+        await player.play();
+
+    } catch (e) {
+
+        console.error(e);
+
+        document.getElementById("song-title").innerText = "Hata";
+        document.getElementById("song-artist").innerText = e.message;
+        document.getElementById("player-badge").innerText = "• Hata";
+
+    }
+
+    btn.disabled = false;
+}
         }
     </script>
 </body>
