@@ -188,7 +188,7 @@
                 </div>
             </div>
 
-            <audio id="audio-player" controls crossorigin="anonymous"></audio>
+            <audio id="audio-player" controls preload="none"></audio>
         </div>
 
         <div class="card">
@@ -202,21 +202,21 @@
         <div class="card">
             <span class="card-title">CANLI RADYO İSTASYONLARI</span>
             <div class="radio-grid">
-                <!-- Test Edilmiş Doğrudan MP3 Akışları -->
+                <!-- Telegram Engeline Takılmayan Doğrudan HTTPS Akışları -->
                 <div class="radio-item" onclick="playRadio('Alem FM', 'https://stream.alemfm.com/alemfm/live/icecast.audio')">
                     <h5>Alem FM</h5>
                     <p>Türkçe Pop / Canlı</p>
                 </div>
-                <div class="radio-item" onclick="playRadio('Kral Pop', 'https://ssllive.kralpop.com.tr/kralpop/kralpop.smil/playlist.m3u8')">
-                    <h5>Kral Pop</h5>
-                    <p>Türkçe Pop</p>
+                <div class="radio-item" onclick="playRadio('Power FM', 'https://powerfm.listenpowerapp.com/powerfm/mpeg/icecast.audio')">
+                    <h5>Power FM</h5>
+                    <p>Yabancı Hit</p>
                 </div>
                 <div class="radio-item" onclick="playRadio('Power Türk', 'https://powerTurk.listenpowerapp.com/powerTurk/mpeg/icecast.audio')">
                     <h5>Power Türk</h5>
                     <p>Türkçe Pop</p>
                 </div>
-                <div class="radio-item" onclick="playRadio('Radyo D', 'https://radyod.live.mediacdn.com/radyod/radyod.smil/playlist.m3u8')">
-                    <h5>Radyo D</h5>
+                <div class="radio-item" onclick="playRadio('Radyo Fenomen', 'https://listen.radiofenomen.com/fenomen/128/icecast.audio')">
+                    <h5>Radyo Fenomen</h5>
                     <p>Hit Müzik</p>
                 </div>
             </div>
@@ -256,7 +256,15 @@
             document.getElementById('player-badge').innerText = "• Canlı";
             
             player.src = url;
-            player.play().catch(e => console.log("Oynatma engellendi:", e));
+            player.load();
+            
+            let playPromise = player.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Oynatma hatası:", error);
+                    document.getElementById('song-artist').innerText = "Oynatma başlatılamadı.";
+                });
+            }
         }
 
         async function searchSong() {
@@ -266,29 +274,41 @@
             document.getElementById('song-title').innerText = "Aranıyor...";
             document.getElementById('song-artist').innerText = query;
 
-            try {
-                // Hızlı ve Engellenmeyen Saavn/YT Müzik API Motoru
-                const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}`);
-                const data = await res.json();
-                
-                if(data.success && data.data.results.length > 0) {
-                    const song = data.data.results[0];
-                    // En yüksek kaliteli ses linkini seç
-                    const audioUrl = song.downloadUrl[song.downloadUrl.length - 1].url;
+            // Timeout mekanizması (5 saniye cevap gelmezse patlamasın)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-                    document.getElementById('song-title').innerText = song.name;
-                    document.getElementById('song-artist').innerText = song.artists.primary[0].name;
+            try {
+                // Güvenli arama motoru
+                const response = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=1`, {
+                    signal: controller.signal
+                });
+                
+                // Deezer API direkt CORS vermediği için sunucu tüneli
+                const proxyRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=1`)}`);
+                const proxyData = await proxyRes.json();
+                const data = JSON.parse(proxyData.contents);
+
+                clearTimeout(timeoutId);
+
+                if(data && data.data && data.data.length > 0) {
+                    const track = data.data[0];
+
+                    document.getElementById('song-title').innerText = track.title;
+                    document.getElementById('song-artist').innerText = track.artist.name;
                     document.getElementById('player-badge').innerText = "• Çalıyor";
 
-                    player.src = audioUrl;
+                    player.src = track.preview; // 30 sn yüksek kaliteli doğrudan MP3 önizleme akışı
+                    player.load();
                     player.play();
                 } else {
                     document.getElementById('song-title').innerText = "Şarkı Bulunamadı";
-                    document.getElementById('song-artist').innerText = "Farklı bir isim deneyin.";
+                    document.getElementById('song-artist').innerText = "Başka bir arama deneyin.";
                 }
             } catch (err) {
-                document.getElementById('song-title').innerText = "Arama Hatası";
-                document.getElementById('song-artist').innerText = "Bağlantı hatası oluştu.";
+                clearTimeout(timeoutId);
+                document.getElementById('song-title').innerText = "Arama Zaman Aşımı";
+                document.getElementById('song-artist').innerText = "Bağlantı hatası, tekrar basın.";
             }
         }
     </script>
