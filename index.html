@@ -115,6 +115,8 @@
 
         // RENDER SUNUCUNUN CANLI ADRESİ 
 
+        const API_URL = "https://cio-muzik-api.onrender.com";
+        
         const player = document.getElementById('audio-player');
 
         async function searchMusic() {
@@ -131,7 +133,7 @@
 
     try {
 
-        const res = await fetch("http://localhost:3000/api/music/search", {
+        const res = await fetch(`${API_URL}/api/music/search`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -175,7 +177,6 @@
 
     btn.disabled = false;
 }
-        }
     </script>
 </body>
 </html>
