@@ -3,23 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cio Müzik</title>
+    <title>Cio Müzik & TV</title>
+    <!-- FontAwesome İkonları -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- HLS.js (Canlı TV ve M3U8 Yayınları İçin) -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
-            --bg-color: #0b132b;
-            --card-bg: #1c2541;
-            --card-border: #2a385b;
-            --accent-color: #00f5d4;
+            --bg-color: #06142b;
+            --card-bg: rgba(10, 29, 54, 0.94);
+            --card-border: rgba(166, 222, 255, 0.24);
+            --accent-color: #5eeeff;
+            --green: #55f5a9;
             --text-color: #ffffff;
-            --subtext-color: #8d99ae;
+            --subtext-color: #c7d9e5;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
 
         body {
-            background-color: var(--bg-color);
+            background: linear-gradient(155deg, #06142b 0%, #10284a 52%, #07162f 100%);
             color: var(--text-color);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             padding: 12px;
@@ -30,8 +35,8 @@
         }
 
         .banner {
-            background: linear-gradient(135deg, #1c2541, #3a506b);
-            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(72, 231, 255, 0.12), rgba(241, 201, 107, 0.08));
+            border-radius: 18px;
             padding: 14px;
             display: flex;
             align-items: center;
@@ -40,118 +45,96 @@
         }
 
         .banner-icon {
-            width: 44px;
-            height: 44px;
-            background: rgba(0, 245, 212, 0.1);
+            width: 48px; height: 48px;
+            background: rgba(94, 238, 255, 0.1);
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            color: var(--accent-color);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; color: var(--accent-color);
         }
 
-        .banner-text h3 { font-size: 15px; color: var(--accent-color); }
+        .banner-text h3 { font-size: 16px; color: var(--green); }
         .banner-text p { font-size: 11px; color: var(--subtext-color); }
 
         .nav-tabs {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
-            background: var(--card-bg);
-            padding: 4px;
-            border-radius: 12px;
-            border: 1px solid var(--card-border);
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+            background: rgba(7, 16, 21, 0.92);
+            padding: 5px; border-radius: 16px; border: 1px solid var(--card-border);
+            position: sticky; top: 8px; z-index: 100; backdrop-filter: blur(10px);
         }
 
         .tab-btn {
-            background: transparent;
-            border: none;
-            color: var(--subtext-color);
-            padding: 8px 0;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            font-size: 10px;
-            cursor: pointer;
+            background: transparent; border: none; color: var(--subtext-color);
+            padding: 8px 0; border-radius: 11px;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            font-size: 10px; cursor: pointer; font-weight: bold;
         }
 
         .tab-btn.active {
-            background: rgba(0, 245, 212, 0.15);
-            color: var(--accent-color);
-            font-weight: bold;
+            background: linear-gradient(145deg, rgba(72, 231, 255, 0.17), rgba(65, 240, 166, 0.08));
+            color: var(--accent-color); border: 1px solid rgba(72, 231, 255, 0.35);
         }
 
         .card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 14px;
-            border: 1px solid var(--card-border);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            background: var(--card-bg); border-radius: 18px; padding: 14px;
+            border: 1px solid var(--card-border); display: flex; flex-direction: column; gap: 10px;
         }
 
         .card-header { display: flex; justify-content: space-between; align-items: center; }
         .card-title { font-size: 11px; color: var(--subtext-color); font-weight: bold; }
-        .badge { background: #ef233c; color: white; font-size: 9px; padding: 2px 6px; border-radius: 10px; }
+        .badge { background: rgba(85, 245, 169, 0.1); color: var(--green); border: 1px solid rgba(65, 240, 166, 0.3); font-size: 10px; padding: 4px 8px; border-radius: 999px; }
 
         .player-info { display: flex; align-items: center; gap: 12px; }
         .song-cover {
-            width: 48px;
-            height: 48px;
-            background: var(--accent-color);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #0b132b;
-            font-size: 18px;
-            overflow: hidden;
+            width: 48px; height: 48px; background: linear-gradient(145deg, var(--accent-color), var(--green));
+            border-radius: 13px; display: flex; align-items: center; justify-content: center;
+            color: #06142b; font-size: 20px; font-weight: bold; overflow: hidden;
         }
 
-        .song-cover img { width: 100%; height: 100%; object-fit: cover; }
-        .song-details h4 { font-size: 13px; margin-bottom: 2px; }
-        .song-details p { font-size: 10px; color: var(--subtext-color); }
+        .song-details h4 { font-size: 14px; margin-bottom: 2px; }
+        .song-details p { font-size: 11px; color: var(--subtext-color); }
 
-        audio { width: 100%; height: 36px; margin-top: 4px; }
+        audio { width: 100%; border-radius: 10px; margin-top: 4px; }
+        video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; }
+
+        /* Embedded YouTube Oynatıcı Çerçevesi */
+        .embed-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 Oran */
+            height: 0;
+            overflow: hidden;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            display: none;
+            margin-top: 6px;
+        }
+
+        .embed-container iframe {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border: 0;
+        }
 
         .search-box { display: flex; gap: 6px; }
         .search-box input {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--card-border);
-            padding: 8px 12px;
-            border-radius: 8px;
-            color: white;
-            outline: none;
-            font-size: 12px;
+            flex: 1; background: rgba(3, 10, 13, 0.68); border: 1px solid var(--card-border);
+            padding: 10px 12px; border-radius: 10px; color: white; outline: none; font-size: 12px;
         }
 
         .search-box button {
-            background: var(--accent-color);
-            color: #0b132b;
-            border: none;
-            padding: 0 14px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 12px;
-            cursor: pointer;
+            background: linear-gradient(135deg, #48dfff, #4af0a1); color: #06172a;
+            border: none; padding: 0 16px; border-radius: 10px; font-weight: 900; font-size: 12px; cursor: pointer;
         }
 
-        .radio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-        .radio-item {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--card-border);
-            cursor: pointer;
+        .grid-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .grid-item {
+            background: rgba(255, 255, 255, 0.045); padding: 10px 12px;
+            border-radius: 12px; border: 1px solid var(--card-border); cursor: pointer; text-align: left;
         }
-        .radio-item:active { background: rgba(0, 245, 212, 0.1); }
-        .radio-item h5 { font-size: 12px; }
-        .radio-item p { font-size: 9px; color: var(--subtext-color); }
+        .grid-item:active { transform: translateY(1px); }
+        .grid-item h5 { font-size: 12px; color: var(--accent-color); margin-bottom: 2px; }
+        .grid-item p { font-size: 10px; color: var(--subtext-color); }
 
         .tab-content { display: none; }
         .tab-content.active { display: flex; flex-direction: column; gap: 12px; }
@@ -163,10 +146,11 @@
         <div class="banner-icon"><i class="fa-solid fa-compact-disc"></i></div>
         <div class="banner-text">
             <h3>Cio Müzik & Eğlence</h3>
-            <p>Müzik ara, radyo dinle veya oyun oyna.</p>
+            <p id="start-param-info">Müzik, Canlı TV ve Oyun Platformu</p>
         </div>
     </div>
 
+    <!-- Sekmeler -->
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="switchTab('music', this)"><i class="fa-solid fa-music"></i>Müzik</button>
         <button class="tab-btn" onclick="switchTab('tv', this)"><i class="fa-solid fa-tv"></i>TV</button>
@@ -175,126 +159,183 @@
         <button class="tab-btn" onclick="switchTab('menu', this)"><i class="fa-solid fa-bars"></i>Menü</button>
     </div>
 
+    <!-- Müzik Sekmesi -->
     <div id="tab-music" class="tab-content active">
         <div class="card">
             <div class="card-header">
-                <span class="card-title">OYNATICI</span>
-                <span class="badge" id="player-badge">• Beklemede</span>
+                <span class="card-title">MÜZİK OYNATICI</span>
+                <span class="badge" id="music-badge">• Beklemede</span>
             </div>
             
             <div class="player-info">
-                <div class="song-cover" id="song-cover"><i class="fa-solid fa-music"></i></div>
+                <div class="song-cover" id="music-cover"><i class="fa-solid fa-music"></i></div>
                 <div class="song-details">
-                    <h4 id="song-title">Bir Müzik veya Radyo Seçin</h4>
-                    <p id="song-artist">Cio Müzik Player</p>
+                    <h4 id="music-title">Bir Şarkı veya Radyo Seçin</h4>
+                    <p id="music-artist">Cio Müzik Player</p>
                 </div>
             </div>
 
+            <!-- Normal Ses Oynatıcı (Radyolar İçin) -->
             <audio id="audio-player" controls style="display: block;"></audio>
+            
+            <!-- YouTube Embed Oynatıcı (Şarkı Aramaları İçin) -->
+            <div class="embed-container" id="embed-wrapper">
+                <iframe id="youtube-frame" allow="autoplay; encrypted-media"></iframe>
+            </div>
         </div>
 
         <div class="card">
-            <span class="card-title">ŞARKI ARA VE DİNLE</span>
+            <span class="card-title">ŞARKI ARA VEYA YOUTUBE LINKI YAPIŞTIR</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Arama yapın (Örn: Rock, Chill, Jazz)">
-                <button id="search-btn" onclick="searchSong()">Oynat</button>
+                <input type="text" id="search-input" placeholder="Şarkı adı veya YouTube linki girin">
+                <button onclick="playSong()">Oynat</button>
             </div>
         </div>
 
         <div class="card">
             <span class="card-title">CANLI RADYO İSTASYONLARI</span>
-            <div class="radio-grid">
-                <div class="radio-item" onclick="playRadio('Power FM', 'https://listen.powerapp.com.tr/powerfm/mpeg/icecast.audio')">
-                    <h5>Power FM</h5>
-                    <p>Yabancı Hit / Canlı</p>
-                </div>
-                <div class="radio-item" onclick="playRadio('Power Türk', 'https://listen.powerapp.com.tr/powerTurk/mpeg/icecast.audio')">
-                    <h5>Power Türk</h5>
-                    <p>Türkçe Pop</p>
-                </div>
-                <div class="radio-item" onclick="playRadio('Power Pop', 'https://listen.powerapp.com.tr/powerpop/mpeg/icecast.audio')">
-                    <h5>Power Pop</h5>
-                    <p>Türkçe Pop Hit</p>
-                </div>
-                <div class="radio-item" onclick="playRadio('Power Akustik', 'https://listen.powerapp.com.tr/powerakustik/mpeg/icecast.audio')">
-                    <h5>Power Akustik</h5>
-                    <p>Akustik Müzik</p>
-                </div>
-            </div>
+            <div class="grid-list" id="radio-grid"></div>
         </div>
     </div>
 
-    <div id="tab-tv" class="tab-content"><div class="card"><p style="text-align:center;">📺 Canlı TV yayınları yakında.</p></div></div>
-    <div id="tab-chess" class="tab-content"><div class="card"><p style="text-align:center;">♟️ Satranç modülü hazırlanıyor.</p></div></div>
-    <div id="tab-ludo" class="tab-content"><div class="card"><p style="text-align:center;">🎲 Ludo oyunu yakında aktif!</p></div></div>
-    <div id="tab-menu" class="tab-content"><div class="card"><p style="text-align:center;">⚙️ Ayarlar.</p></div></div>
+    <!-- TV Sekmesi -->
+    <div id="tab-tv" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">CANLI TV</span>
+                <span class="badge" id="tv-badge">• Hazır</span>
+            </div>
+            <h4 id="tv-title" style="font-size:14px; margin-bottom:6px;">Bir TV Kanalı Seçin</h4>
+            <video id="tv-player" controls></video>
+        </div>
+
+        <div class="card">
+            <span class="card-title">CANLI TV KANALLARI</span>
+            <div class="grid-list" id="tv-grid"></div>
+        </div>
+    </div>
+
+    <!-- Diğer Sekmeler -->
+    <div id="tab-chess" class="tab-content"><div class="card"><p style="text-align:center;">♟️ Satranç lobisi hazırlanıyor...</p></div></div>
+    <div id="tab-ludo" class="tab-content"><div class="card"><p style="text-align:center;">🎲 Ludo lobisi hazırlanıyor...</p></div></div>
+    <div id="tab-menu" class="tab-content"><div class="card"><p style="text-align:center;">⚙️ Uygulama Ayarları</p></div></div>
 
     <script>
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.expand();
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand();
+            tg.ready();
         }
 
-        const player = document.getElementById('audio-player');
+        const RADIOS = [
+            ["Power FM", "https://listen.powerapp.com.tr/powerfm/mpeg/icecast.audio"],
+            ["Power Türk", "https://listen.powerapp.com.tr/powerTurk/mpeg/icecast.audio"],
+            ["Power Pop", "https://listen.powerapp.com.tr/powerpop/mpeg/icecast.audio"],
+            ["Power Akustik", "https://listen.powerapp.com.tr/powerakustik/mpeg/icecast.audio"]
+        ];
+
+        const TVS = [
+            ["TRT 1", "https://tv-trt1.medya.trt.com.tr/master.m3u8"],
+            ["TRT Haber", "https://tv-trthaber.medya.trt.com.tr/master_360.m3u8"],
+            ["TRT Müzik", "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8"],
+            ["TRT Çocuk", "https://tv-trtcocuk.medya.trt.com.tr/master_720.m3u8"]
+        ];
+
+        const audioPlayer = document.getElementById('audio-player');
+        const tvPlayer = document.getElementById('tv-player');
+        const embedWrapper = document.getElementById('embed-wrapper');
+        const youtubeFrame = document.getElementById('youtube-frame');
+        let hlsInstance = null;
 
         function switchTab(tabName, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tabName).classList.add('active');
             btn.classList.add('active');
+            tg?.HapticFeedback?.selectionChanged?.();
         }
 
         function playRadio(name, url) {
-            document.getElementById('song-cover').innerHTML = '<i class="fa-solid fa-radio"></i>';
-            document.getElementById('song-title').innerText = name;
-            document.getElementById('song-artist').innerText = "Canlı Radyo Yayını";
-            document.getElementById('player-badge').innerText = "• Canlı";
+            // YouTube frame'ini kapat, HTML5 sesi aç
+            embedWrapper.style.display = "none";
+            youtubeFrame.src = "";
+            audioPlayer.style.display = "block";
+            tvPlayer.pause();
+
+            document.getElementById('music-title').innerText = name;
+            document.getElementById('music-artist').innerText = "Canlı Radyo Yayını";
+            document.getElementById('music-badge').innerText = "• Canlı";
             
-            player.src = url;
-            player.load();
-            player.play().catch(e => console.log("Oynatma hatası:", e));
+            audioPlayer.src = url;
+            audioPlayer.load();
+            audioPlayer.play().catch(() => {});
+            tg?.HapticFeedback?.impactOccurred?.('medium');
         }
 
-        async function searchSong() {
+        function playTV(name, url) {
+            embedWrapper.style.display = "none";
+            youtubeFrame.src = "";
+            audioPlayer.pause();
+
+            document.getElementById('tv-title').innerText = name;
+            document.getElementById('tv-badge').innerText = "• Canlı TV";
+
+            if (hlsInstance) { hlsInstance.destroy(); }
+
+            if (Hls.isSupported() && url.endsWith('.m3u8')) {
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(url);
+                hlsInstance.attachMedia(tvPlayer);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => tvPlayer.play());
+            } else {
+                tvPlayer.src = url;
+                tvPlayer.load();
+                tvPlayer.play().catch(() => {});
+            }
+            tg?.HapticFeedback?.impactOccurred?.('medium');
+        }
+
+        // Kesintisiz YouTube Oynatma Mantığı
+        function playSong() {
             const query = document.getElementById('search-input').value.trim();
-            const btn = document.getElementById('search-btn');
             if(!query) return;
 
-            btn.disabled = true;
-            document.getElementById('song-title').innerText = "Aranıyor...";
-            document.getElementById('song-artist').innerText = query;
+            // Radyo sesini durdur
+            audioPlayer.pause();
+            audioPlayer.style.display = "none";
 
-            try {
-                // Jamendo Açık API - Telegram Mini App engeline takılmaz, doğrudan çalar
-                const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d30c08&format=json&limit=1&search=${encodeURIComponent(query)}`);
-                const data = await res.json();
+            document.getElementById('music-title').innerText = query;
+            document.getElementById('music-artist').innerText = "YouTube Oynatılıyor";
+            document.getElementById('music-badge').innerText = "• Çalıyor";
 
-                if (data.results && data.results.length > 0) {
-                    const track = data.results[0];
-
-                    document.getElementById('song-title').innerText = track.name;
-                    document.getElementById('song-artist').innerText = track.artist_name;
-                    document.getElementById('player-badge').innerText = "• Çalıyor";
-                    
-                    if (track.image) {
-                        document.getElementById('song-cover').innerHTML = `<img src="${track.image}" alt="Cover">`;
-                    } else {
-                        document.getElementById('song-cover').innerHTML = '<i class="fa-solid fa-music"></i>';
-                    }
-
-                    player.src = track.audio;
-                    player.load();
-                    player.play();
-                } else {
-                    document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
-                    document.getElementById('song-artist').innerText = "Farklı bir arama yapın.";
-                }
-            } catch (e) {
-                document.getElementById('song-title').innerText = "Bağlantı Hatası";
-                document.getElementById('song-artist').innerText = "Ağınızı kontrol edin.";
-            } finally {
-                btn.disabled = false;
+            // Eğer doğrudan YouTube video ID veya Link girildiyse
+            let videoId = query;
+            if (query.includes("v=")) {
+                videoId = query.split("v=")[1].split("&")[0];
+            } else if (query.includes("youtu.be/")) {
+                videoId = query.split("youtu.be/")[1].split("?")[0];
+            } else {
+                // Arama sorgusu ise YouTube search tüneli üzerinden açar
+                youtubeFrame.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
+                embedWrapper.style.display = "block";
+                return;
             }
+
+            youtubeFrame.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+            embedWrapper.style.display = "block";
+            tg?.HapticFeedback?.impactOccurred?.('medium');
         }
+
+        // Izgara listelerini oluştur
+        const radioGrid = document.getElementById('radio-grid');
+        RADIOS.forEach(([name, url]) => {
+            radioGrid.innerHTML += `<div class="grid-item" onclick="playRadio('${name}', '${url}')"><h5>${name}</h5><p>Canlı Yayın</p></div>`;
+        });
+
+        const tvGrid = document.getElementById('tv-grid');
+        TVS.forEach(([name, url]) => {
+            tvGrid.innerHTML += `<div class="grid-item" onclick="playTV('${name}', '${url}')"><h5>${name}</h5><p>Canlı TV Akışı</p></div>`;
+        });
     </script>
 </body>
 </html>
