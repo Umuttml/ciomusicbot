@@ -188,14 +188,14 @@
                 </div>
             </div>
 
-            <!-- HTML5 Tek Oynatıcı -->
+            <!-- HTML5 Ses Oynatıcı -->
             <audio id="audio-player" controls style="display: block;"></audio>
         </div>
 
         <div class="card">
-            <span class="card-title">AÇIK MÜZİK KÜTÜPHANESİ ARA</span>
+            <span class="card-title">ŞARKI ARA VE DİNLE</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Arama yapın (Örn: Rock, Chill, Jazz)">
+                <input type="text" id="search-input" placeholder="Şarkı adı yazın (örn: Sebebi Var)">
                 <button onclick="searchSong()">Oynat</button>
             </div>
         </div>
@@ -233,6 +233,9 @@
             window.Telegram.WebApp.expand();
         }
 
+        // Render Backend Adresi
+        const BACKEND_URL = "https://ciomusicbot.onrender.com";
+
         const player = document.getElementById('audio-player');
 
         function switchTab(tabName, btn) {
@@ -256,30 +259,29 @@
             const query = document.getElementById('search-input').value.trim();
             if(!query) return;
 
-            document.getElementById('song-title').innerText = "Aranıyor...";
+            document.getElementById('song-title').innerText = "Sunucuda Aranıyor...";
             document.getElementById('song-artist').innerText = query;
 
             try {
-                // Jamendo Açık Müzik API - CORS engeline takılmaz, doğrudan MP3 verir
-                const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d30c08&format=json&limit=1&search=${encodeURIComponent(query)}`);
+                // Render sunucusu üzerinden istek atılır
+                const res = await fetch(`${BACKEND_URL}/api/search?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
 
-                if(data.results && data.results.length > 0) {
-                    const track = data.results[0];
-                    document.getElementById('song-title').innerText = track.name;
-                    document.getElementById('song-artist').innerText = track.artist_name;
+                if(data.success && data.url) {
+                    document.getElementById('song-title').innerText = data.title;
+                    document.getElementById('song-artist').innerText = data.artist || "YouTube Stream";
                     document.getElementById('player-badge').innerText = "• Çalıyor";
 
-                    player.src = track.audio;
+                    player.src = data.url;
                     player.load();
                     player.play();
                 } else {
-                    document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
-                    document.getElementById('song-artist').innerText = "Farklı bir kelime deneyin.";
+                    document.getElementById('song-title').innerText = "Şarkı Bulunamadı";
+                    document.getElementById('song-artist').innerText = "Farklı bir arama yapın.";
                 }
             } catch (err) {
                 document.getElementById('song-title').innerText = "Bağlantı Hatası";
-                document.getElementById('song-artist').innerText = "Tekrar deneyin.";
+                document.getElementById('song-artist').innerText = "Render sunucusu henüz uyanmamış olabilir.";
             }
         }
     </script>
