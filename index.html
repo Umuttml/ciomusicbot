@@ -1,349 +1,401 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cio Müzik & TV</title>
-    <!-- FontAwesome İkonları -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Telegram WebApp SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- HLS.js (Canlı TV ve M3U8 Yayınları İçin) -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <style>
-        :root {
-            --bg-color: #06142b;
-            --card-bg: rgba(10, 29, 54, 0.94);
-            --card-border: rgba(166, 222, 255, 0.24);
-            --accent-color: #5eeeff;
-            --green: #55f5a9;
-            --text-color: #ffffff;
-            --subtext-color: #c7d9e5;
-        }
+const tg = window.Telegram?.WebApp;
+const API_BASE = "https://api.alemmuzik.com";
 
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-
-        body {
-            background: linear-gradient(155deg, #06142b 0%, #10284a 52%, #07162f 100%);
-            color: var(--text-color);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            min-height: 100vh;
-        }
-
-        .banner {
-            background: linear-gradient(135deg, rgba(72, 231, 255, 0.12), rgba(241, 201, 107, 0.08));
-            border-radius: 18px;
-            padding: 14px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border: 1px solid var(--card-border);
-        }
-
-        .banner-icon {
-            width: 48px; height: 48px;
-            background: rgba(94, 238, 255, 0.1);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px; color: var(--accent-color);
-        }
-
-        .banner-text h3 { font-size: 16px; color: var(--green); }
-        .banner-text p { font-size: 11px; color: var(--subtext-color); }
-
-        .nav-tabs {
-            display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
-            background: rgba(7, 16, 21, 0.92);
-            padding: 5px; border-radius: 16px; border: 1px solid var(--card-border);
-            position: sticky; top: 8px; z-index: 100; backdrop-filter: blur(10px);
-        }
-
-        .tab-btn {
-            background: transparent; border: none; color: var(--subtext-color);
-            padding: 8px 0; border-radius: 11px;
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
-            font-size: 10px; cursor: pointer; font-weight: bold;
-        }
-
-        .tab-btn.active {
-            background: linear-gradient(145deg, rgba(72, 231, 255, 0.17), rgba(65, 240, 166, 0.08));
-            color: var(--accent-color); border: 1px solid rgba(72, 231, 255, 0.35);
-        }
-
-        .card {
-            background: var(--card-bg); border-radius: 18px; padding: 14px;
-            border: 1px solid var(--card-border); display: flex; flex-direction: column; gap: 10px;
-        }
-
-        .card-header { display: flex; justify-content: space-between; align-items: center; }
-        .card-title { font-size: 11px; color: var(--subtext-color); font-weight: bold; }
-        .badge { background: rgba(85, 245, 169, 0.1); color: var(--green); border: 1px solid rgba(65, 240, 166, 0.3); font-size: 10px; padding: 4px 8px; border-radius: 999px; }
-
-        .player-info { display: flex; align-items: center; gap: 12px; }
-        .song-cover {
-            width: 48px; height: 48px; background: linear-gradient(145deg, var(--accent-color), var(--green));
-            border-radius: 13px; display: flex; align-items: center; justify-content: center;
-            color: #06142b; font-size: 20px; font-weight: bold; overflow: hidden;
-        }
-
-        .song-details h4 { font-size: 14px; margin-bottom: 2px; }
-        .song-details p { font-size: 11px; color: var(--subtext-color); }
-
-        audio { width: 100%; border-radius: 10px; margin-top: 4px; }
-        video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; }
-
-        /* Embedded YouTube Oynatıcı Çerçevesi */
-        .embed-container {
-            position: relative;
-            width: 100%;
-            padding-bottom: 56.25%; /* 16:9 Oran */
-            height: 0;
-            overflow: hidden;
-            border-radius: 12px;
-            border: 1px solid var(--card-border);
-            display: none;
-            margin-top: 6px;
-        }
-
-        .embed-container iframe {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            border: 0;
-        }
-
-        .search-box { display: flex; gap: 6px; }
-        .search-box input {
-            flex: 1; background: rgba(3, 10, 13, 0.68); border: 1px solid var(--card-border);
-            padding: 10px 12px; border-radius: 10px; color: white; outline: none; font-size: 12px;
-        }
-
-        .search-box button {
-            background: linear-gradient(135deg, #48dfff, #4af0a1); color: #06172a;
-            border: none; padding: 0 16px; border-radius: 10px; font-weight: 900; font-size: 12px; cursor: pointer;
-        }
-
-        .grid-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        .grid-item {
-            background: rgba(255, 255, 255, 0.045); padding: 10px 12px;
-            border-radius: 12px; border: 1px solid var(--card-border); cursor: pointer; text-align: left;
-        }
-        .grid-item:active { transform: translateY(1px); }
-        .grid-item h5 { font-size: 12px; color: var(--accent-color); margin-bottom: 2px; }
-        .grid-item p { font-size: 10px; color: var(--subtext-color); }
-
-        .tab-content { display: none; }
-        .tab-content.active { display: flex; flex-direction: column; gap: 12px; }
-    </style>
-</head>
-<body>
-
-    <div class="banner">
-        <div class="banner-icon"><i class="fa-solid fa-compact-disc"></i></div>
-        <div class="banner-text">
-            <h3>Cio Müzik & Eğlence</h3>
-            <p id="start-param-info">Müzik, Canlı TV ve Oyun Platformu</p>
-        </div>
-    </div>
-
-    <!-- Sekmeler -->
-    <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('music', this)"><i class="fa-solid fa-music"></i>Müzik</button>
-        <button class="tab-btn" onclick="switchTab('tv', this)"><i class="fa-solid fa-tv"></i>TV</button>
-        <button class="tab-btn" onclick="switchTab('chess', this)"><i class="fa-solid fa-chess"></i>Satranç</button>
-        <button class="tab-btn" onclick="switchTab('ludo', this)"><i class="fa-solid fa-dice"></i>Ludo</button>
-        <button class="tab-btn" onclick="switchTab('menu', this)"><i class="fa-solid fa-bars"></i>Menü</button>
-    </div>
-
-    <!-- Müzik Sekmesi -->
-    <div id="tab-music" class="tab-content active">
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title">MÜZİK OYNATICI</span>
-                <span class="badge" id="music-badge">• Beklemede</span>
-            </div>
-            
-            <div class="player-info">
-                <div class="song-cover" id="music-cover"><i class="fa-solid fa-music"></i></div>
-                <div class="song-details">
-                    <h4 id="music-title">Bir Şarkı veya Radyo Seçin</h4>
-                    <p id="music-artist">Cio Müzik Player</p>
-                </div>
-            </div>
-
-            <!-- Normal Ses Oynatıcı (Radyolar İçin) -->
-            <audio id="audio-player" controls style="display: block;"></audio>
-            
-            <!-- YouTube Embed Oynatıcı (Şarkı Aramaları İçin) -->
-            <div class="embed-container" id="embed-wrapper">
-                <iframe id="youtube-frame" allow="autoplay; encrypted-media"></iframe>
-            </div>
-        </div>
-
-        <div class="card">
-            <span class="card-title">ŞARKI ARA VEYA YOUTUBE LINKI YAPIŞTIR</span>
-            <div class="search-box">
-                <input type="text" id="search-input" placeholder="Şarkı adı veya YouTube linki girin">
-                <button onclick="playSong()">Oynat</button>
-            </div>
-        </div>
-
-        <div class="card">
-            <span class="card-title">CANLI RADYO İSTASYONLARI</span>
-            <div class="grid-list" id="radio-grid"></div>
-        </div>
-    </div>
-
-    <!-- TV Sekmesi -->
-    <div id="tab-tv" class="tab-content">
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title">CANLI TV</span>
-                <span class="badge" id="tv-badge">• Hazır</span>
-            </div>
-            <h4 id="tv-title" style="font-size:14px; margin-bottom:6px;">Bir TV Kanalı Seçin</h4>
-            <video id="tv-player" controls></video>
-        </div>
-
-        <div class="card">
-            <span class="card-title">CANLI TV KANALLARI</span>
-            <div class="grid-list" id="tv-grid"></div>
-        </div>
-    </div>
-
-    <!-- Diğer Sekmeler -->
-    <div id="tab-chess" class="tab-content"><div class="card"><p style="text-align:center;">♟️ Satranç lobisi hazırlanıyor...</p></div></div>
-    <div id="tab-ludo" class="tab-content"><div class="card"><p style="text-align:center;">🎲 Ludo lobisi hazırlanıyor...</p></div></div>
-    <div id="tab-menu" class="tab-content"><div class="card"><p style="text-align:center;">⚙️ Uygulama Ayarları</p></div></div>
-
-    <script>
-        const tg = window.Telegram?.WebApp;
-        if (tg) {
-            tg.expand();
-            tg.ready();
-        }
-
-        const RADIOS = [
-            ["Power FM", "https://listen.powerapp.com.tr/powerfm/mpeg/icecast.audio"],
-            ["Power Türk", "https://listen.powerapp.com.tr/powerTurk/mpeg/icecast.audio"],
-            ["Power Pop", "https://listen.powerapp.com.tr/powerpop/mpeg/icecast.audio"],
-            ["Power Akustik", "https://listen.powerapp.com.tr/powerakustik/mpeg/icecast.audio"]
-        ];
-
-        const TVS = [
-            ["TRT 1", "https://tv-trt1.medya.trt.com.tr/master.m3u8"],
-            ["TRT Haber", "https://tv-trthaber.medya.trt.com.tr/master_360.m3u8"],
-            ["TRT Müzik", "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8"],
-            ["TRT Çocuk", "https://tv-trtcocuk.medya.trt.com.tr/master_720.m3u8"]
-        ];
-
-        const audioPlayer = document.getElementById('audio-player');
-        const tvPlayer = document.getElementById('tv-player');
-        const embedWrapper = document.getElementById('embed-wrapper');
-        const youtubeFrame = document.getElementById('youtube-frame');
-        let hlsInstance = null;
-
-        function switchTab(tabName, btn) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tabName).classList.add('active');
-            btn.classList.add('active');
-            tg?.HapticFeedback?.selectionChanged?.();
-        }
-
-        function playRadio(name, url) {
-            // YouTube frame'ini kapat, HTML5 sesi aç
-            embedWrapper.style.display = "none";
-            youtubeFrame.src = "";
-            audioPlayer.style.display = "block";
-            tvPlayer.pause();
-
-            document.getElementById('music-title').innerText = name;
-            document.getElementById('music-artist').innerText = "Canlı Radyo Yayını";
-            document.getElementById('music-badge').innerText = "• Canlı";
-            
-            audioPlayer.src = url;
-            audioPlayer.load();
-            audioPlayer.play().catch(() => {});
-            tg?.HapticFeedback?.impactOccurred?.('medium');
-        }
-
-        function playTV(name, url) {
-            embedWrapper.style.display = "none";
-            youtubeFrame.src = "";
-            audioPlayer.pause();
-
-            document.getElementById('tv-title').innerText = name;
-            document.getElementById('tv-badge').innerText = "• Canlı TV";
-
-            if (hlsInstance) { hlsInstance.destroy(); }
-
-            if (Hls.isSupported() && url.endsWith('.m3u8')) {
-                hlsInstance = new Hls();
-                hlsInstance.loadSource(url);
-                hlsInstance.attachMedia(tvPlayer);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => tvPlayer.play());
-            } else {
-                tvPlayer.src = url;
-                tvPlayer.load();
-                tvPlayer.play().catch(() => {});
-            }
-            tg?.HapticFeedback?.impactOccurred?.('medium');
-        }
-
-        // Kesintisiz YouTube Oynatma Mantığı
-        async function playSong() {
-    const query = document.getElementById('search-input').value.trim();
-    if(!query) return;
-
-    // Normal ses oynatıcıyı aç, YouTube video kutusunu gizle
-    embedWrapper.style.display = "none";
-    audioPlayer.style.display = "block";
-
-    document.getElementById('music-title').innerText = "Aranıyor...";
-    document.getElementById('music-artist').innerText = query;
-    document.getElementById('music-badge').innerText = "• Yükleniyor";
-
-    try {
-        // Invidious API üzerinden YouTube ses akışını (itag=140 - sadece ses) çekiyoruz
-        const res = await fetch(`https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
-        const data = await res.json();
-
-        if (data && data.length > 0) {
-            const video = data[0];
-            
-            document.getElementById('music-title').innerText = video.title;
-            document.getElementById('music-artist').innerText = video.author;
-            document.getElementById('music-badge').innerText = "• Çalıyor";
-
-            // Doğrudan ses akışını HTML5 Audio Player'a yüklüyoruz
-            audioPlayer.src = `https://inv.tux.pizza/latest_version?id=${video.videoId}&itag=140`;
-            audioPlayer.load();
-            audioPlayer.play();
-        } else {
-            document.getElementById('music-title').innerText = "Sonuç Bulunamadı";
-        }
-    } catch (e) {
-        document.getElementById('music-title').innerText = "Arama Hatası";
-        document.getElementById('music-artist').innerText = "Tekrar deneyin.";
-    }
-    tg?.HapticFeedback?.impactOccurred?.('medium');
+function activeTelegramApp() {
+  return window.Telegram?.WebApp;
 }
 
-        // Izgara listelerini oluştur
-        const radioGrid = document.getElementById('radio-grid');
-        RADIOS.forEach(([name, url]) => {
-            radioGrid.innerHTML += `<div class="grid-item" onclick="playRadio('${name}', '${url}')"><h5>${name}</h5><p>Canlı Yayın</p></div>`;
-        });
+const links = {
+  bot: "https://t.me/AlemMuzikBot",
+  support: "https://t.me/QuantumQuillCoder",
+  channel: "https://t.me/AlemMuzik",
+  community: "https://t.me/Alemciyiz",
+};
 
-        const tvGrid = document.getElementById('tv-grid');
-        TVS.forEach(([name, url]) => {
-            tvGrid.innerHTML += `<div class="grid-item" onclick="playTV('${name}', '${url}')"><h5>${name}</h5><p>Canlı TV Akışı</p></div>`;
-        });
-    </script>
-</body>
-</html>
+const RADIO_STATIONS = [
+  ["Alem FM", "https://alemfm.radyotvonline.net/alemfmaac"],
+  ["Joy FM", "https://playerservices.streamtheworld.com/api/livestream-redirect/JOYTURK_AKUSTIK128AAC.aac?/;stream.mp3"],
+  ["Genç FM", "https://gsbradyo.ercdn.net/gsbradyo/gsbradyo.m3u8"],
+  ["Radyo 7", "https://moondigitaledge2.radyotvonline.net/radyo7arabesk/playlist.m3u8"],
+  ["Power Türk", "https://live.powerapp.com.tr/powerturk/abr/playlist.m3u8"],
+  ["Power Love", "https://listen.powerapp.com.tr/powerlove/abr/playlist.m3u8"],
+  ["Slow Türk", "https://radyo.duhnet.tv/ak_dtvh_slowturk"],
+  ["Kral FM", "https://dygedge2.radyotvonline.net/kralfm/playlist.m3u8"],
+  ["Kral Pop", "https://dygedge.radyotvonline.net/kralpop/playlist.m3u8"],
+  ["Number1", "https://eustr75.mediatriple.net//Number1Media/01_Number1Fm.stream/playlist.m3u8"],
+  ["Number1 Türk", "https://eustr75.mediatriple.net/Number1Media/00_Number1_Turk_FM.stream/playlist.m3u8"],
+  ["Baba Radyo", "https://edge1.radyotvonline.net/shoutcast/play/babaradyo?/;stream.mp3"],
+  ["Radyo D", "https://moondigitaledge2.radyotvonline.net/radyod/playlist.m3u8"],
+  ["Seymen", "https://yayin.radyoseymen.com.tr:1070/stream?/;stream.mp3"],
+  ["Süper FM", "https://playerservices.streamtheworld.com/api/livestream-redirect/SUPER_FM_ITUNES.mp3"],
+  ["Virgin", "https://playerservices.streamtheworld.com/api/livestream-redirect/VIRGIN_RADIO_ITUNES.mp3"],
+  ["Sesiniz", "https://kesintisizyayin.com:1656/stream?type=http&nocache=4"],
+  ["Radyo 45'lik", "https://stream.radyo45lik.com:4545/stream"],
+  ["90's FM", "https://listen.radyotvonline.net/hls/play/show_90lar.m3u8"],
+  ["Aturka", "https://yayin.jumboserver.net:9100/stream?/;stream.mp3"],
+  ["Aşk FM", "https://stream.netradyom.com/radio/8000/radio.mp3?/;stream.mp3"],
+  ["Vturka", "https://listen.radyotvonline.net/hls/play/viva_turca.m3u8"],
+  ["Romantik", "https://radyo.yayin.com.tr:6042/stream?/;stream.mp3"],
+  ["Metro FM", "https://playerservices.streamtheworld.com/api/livestream-redirect/METRO_FM128AAC.aac?/;stream.mp3"],
+  ["Fenomen", "https://live.radyofenomen.com/fenomen/128/icecast.audio?/;stream.mp3"],
+  ["Arabesk", "https://moondigitaledge2.radyotvonline.net/radyo7arabesk/playlist.m3u8"],
+  ["Efkar", "https://playerservices.streamtheworld.com/api/livestream-redirect/EFKAR128AAC.aac?/;stream.mp3"],
+  ["Mydonose", "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_MYDONOSE128AAC.aac?/;stream.mp3"],
+  ["Slow Hits", "https://playerservices.streamtheworld.com/api/livestream-redirect/SC030_SO1AAC.aac?/;stream.mp3"],
+  ["Banko", "https://stream.netradyom.com/listen/radyobanko/radio.mp3/;stream.mp3"],
+  ["Bayram", "https://sslyayin.netyayin.net/3442/stream/;stream.mp3"],
+  ["Kalp FM", "https://yayin.kalpfm.com:8080/stream?/;stream.mp3"],
+  ["Kafa FM", "https://moondigitaledge2.radyotvonline.net/kafaradyo/playlist.m3u8"],
+  ["Diyanet", "https://eustr76.mediatriple.net/videoonlylive/mtikoimxnztxlive/broadcast_5e3c1171d7d2a.smil/playlist.m3u8"],
+];
+
+const TV_CHANNELS = [
+  ["TRT 1", "https://tv-trt1.medya.trt.com.tr/master.m3u8"],
+  ["TRT Haber", "https://tv-trthaber.medya.trt.com.tr/master_360.m3u8"],
+  ["TRT Müzik", "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8"],
+  ["TRT Çocuk", "https://tv-trtcocuk.medya.trt.com.tr/master_720.m3u8"],
+  ["TV8", "https://tv8.daioncdn.net/tv8/tv8_360p.m3u8"],
+  ["TV8,5", "https://rkhubpaomb.turknet.ercdn.net/fwjkgpasof/tv8bucuk/tv8bucuk.m3u8"],
+  ["Beyaz TV", "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv.m3u8"],
+  ["Halk TV", "https://halktv-live.daioncdn.net/halktv/halktv_360p.m3u8"],
+  ["Ekol TV", "https://ekoltv-live.ercdn.net/ekoltv/ekoltv_360p.m3u8"],
+  ["Minika GO", "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/minikago/minikago_480p.m3u8"],
+];
+
+const toast = document.getElementById("toast");
+let toastTimer;
+
+function showToast(message) {
+  clearTimeout(toastTimer);
+  toast.textContent = message;
+  toast.classList.add("show");
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2500);
+}
+
+function haptic(style = "light") {
+  tg?.HapticFeedback?.impactOccurred?.(style);
+}
+
+async function apiRequest(path, options = {}) {
+  let initData = activeTelegramApp()?.initData;
+  if (!initData) {
+    const deadline = Date.now() + 2500;
+    while (!initData && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      initData = activeTelegramApp()?.initData;
+    }
+  }
+  if (!initData) throw new Error("Mini App'i Telegram grubundaki bağlantıdan açın.");
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `tma ${initData}`,
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || "Sunucu isteği tamamlanamadı.");
+  return payload;
+}
+
+async function apiStream(path, options = {}) {
+  let initData = activeTelegramApp()?.initData;
+  if (!initData) {
+    const deadline = Date.now() + 2500;
+    while (!initData && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      initData = activeTelegramApp()?.initData;
+    }
+  }
+  if (!initData) throw new Error("Mini App'i Telegram grubundaki bağlantıdan açın.");
+  const response = await fetch(`${API_BASE}${path}`, {
+    cache: "no-store",
+    ...options,
+    headers: {
+      Authorization: `tma ${initData}`,
+      ...options.headers,
+    },
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || "Gerçek zamanlı oyun bağlantısı kurulamadı.");
+  }
+  return response;
+}
+
+window.showMiniAppToast = showToast;
+window.miniAppHaptic = haptic;
+window.miniAppApi = {
+  request: apiRequest,
+  stream: apiStream,
+  get available() { return Boolean(activeTelegramApp()?.initData); },
+};
+
+// Telegram eski HTML'i önbellekten açsa bile artık kullanılmayan elle
+// başlatma düğmelerini ekrandan kesin olarak kaldır.
+["chess-start", "ludo-start"].forEach((id) => document.getElementById(id)?.remove());
+
+function openLink(key) {
+  const url = links[key];
+  if (!url) return;
+  if (tg?.openTelegramLink && url.startsWith("https://t.me/")) tg.openTelegramLink(url);
+  else if (tg?.openLink) tg.openLink(url);
+  else window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function applyTelegramTheme() {
+  if (!tg) return;
+  tg.ready();
+  tg.expand();
+  tg.disableVerticalSwipes?.();
+  const params = tg.themeParams || {};
+  if (params.bg_color) document.documentElement.style.setProperty("--bg", params.bg_color);
+  if (params.text_color) document.documentElement.style.setProperty("--text", params.text_color);
+  if (params.hint_color) document.documentElement.style.setProperty("--muted", params.hint_color);
+}
+
+document.querySelectorAll("[data-open]").forEach((button) => {
+  button.addEventListener("click", () => openLink(button.dataset.open));
+});
+
+function activateTab(name, updateHash = true) {
+  if (!["music", "tv", "chess", "ludo", "menu"].includes(name)) return;
+  const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+  const panel = document.getElementById(name);
+  if (!tab || !panel) return;
+  document.querySelectorAll(".tab").forEach((item) => item.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach((item) => item.classList.remove("active"));
+  tab.classList.add("active");
+  panel.classList.add("active");
+  if (updateHash) history.replaceState(null, "", `#${name}`);
+}
+
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    activateTab(tab.dataset.tab);
+    tg?.HapticFeedback?.selectionChanged?.();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+});
+
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const value = button.dataset.copy;
+    try {
+      await navigator.clipboard.writeText(value);
+      showToast("Komut kopyalandı");
+    } catch {
+      showToast(value);
+    }
+    haptic();
+  });
+});
+
+const player = document.getElementById("music-player");
+const trackTitle = document.getElementById("track-title");
+const liveBadge = document.querySelector(".live-badge");
+const stationGrid = document.getElementById("station-grid");
+const searchStatus = document.getElementById("music-search-status");
+const tvPlayer = document.getElementById("tv-player");
+const tvTitle = document.getElementById("tv-title");
+const tvGrid = document.getElementById("tv-grid");
+const tvLiveBadge = document.getElementById("tv-live-badge");
+let activeStation = null;
+let hls = null;
+let tvHls = null;
+let trackObjectUrl = null;
+
+function destroyHls() {
+  hls?.destroy();
+  hls = null;
+}
+
+function releaseTrackObjectUrl() {
+  if (trackObjectUrl) URL.revokeObjectURL(trackObjectUrl);
+  trackObjectUrl = null;
+}
+
+function destroyTvHls() {
+  tvHls?.destroy();
+  tvHls = null;
+}
+
+async function playStream(url, name) {
+  tvPlayer?.pause();
+  destroyHls();
+  document.querySelectorAll(".station").forEach((item) => item.classList.remove("playing"));
+  activeStation?.classList.add("playing");
+  trackTitle.textContent = name;
+  liveBadge.classList.add("connecting");
+  liveBadge.lastChild.textContent = " Bağlanıyor";
+
+  const isHls = /\.m3u8(?:$|\?)/i.test(url);
+  if (isHls && window.Hls?.isSupported()) {
+    hls = new window.Hls({ enableWorker: true, lowLatencyMode: true });
+    hls.loadSource(url);
+    hls.attachMedia(player);
+  } else {
+    player.src = url;
+    player.load();
+  }
+
+  try {
+    await player.play();
+    haptic("medium");
+  } catch {
+    liveBadge.classList.remove("connecting");
+    liveBadge.lastChild.textContent = " Hazır";
+    showToast("Yayın başlatılamadı; başka istasyon deneyin");
+  }
+}
+
+async function playTvStream(url, name, button) {
+  destroyTvHls();
+  destroyHls();
+  player?.pause();
+  document.querySelectorAll(".tv-channel").forEach((item) => item.classList.remove("playing"));
+  button.classList.add("playing");
+  tvTitle.textContent = name;
+  tvLiveBadge.classList.add("connecting");
+  tvLiveBadge.classList.remove("on-air");
+  tvLiveBadge.lastChild.textContent = " Bağlanıyor";
+
+  if (window.Hls?.isSupported()) {
+    tvHls = new window.Hls({ enableWorker: true, lowLatencyMode: true });
+    tvHls.loadSource(url);
+    tvHls.attachMedia(tvPlayer);
+  } else {
+    tvPlayer.src = url;
+    tvPlayer.load();
+  }
+
+  try {
+    await tvPlayer.play();
+    haptic("medium");
+  } catch {
+    tvLiveBadge.classList.remove("connecting");
+    tvLiveBadge.lastChild.textContent = " Hazır";
+    showToast("TV yayını başlatılamadı; başka kanal deneyin");
+  }
+}
+
+TV_CHANNELS.forEach(([name, stream]) => {
+  const channel = document.createElement("button");
+  channel.type = "button";
+  channel.className = "tv-channel";
+  channel.innerHTML = `<span>▶</span><b>${name}</b><small>Canlı yayın</small>`;
+  channel.addEventListener("click", () => playTvStream(stream, name, channel));
+  tvGrid?.append(channel);
+});
+
+document.getElementById("stop-tv")?.addEventListener("click", () => {
+  destroyTvHls();
+  tvPlayer.pause();
+  tvPlayer.removeAttribute("src");
+  tvPlayer.load();
+  document.querySelectorAll(".tv-channel").forEach((item) => item.classList.remove("playing"));
+  tvTitle.textContent = "Bir kanal seç";
+  tvLiveBadge.classList.remove("connecting", "on-air");
+  tvLiveBadge.lastChild.textContent = " Hazır";
+});
+
+tvPlayer?.addEventListener("playing", () => {
+  tvLiveBadge.classList.remove("connecting");
+  tvLiveBadge.classList.add("on-air");
+  tvLiveBadge.lastChild.textContent = " Canlı";
+});
+
+tvPlayer?.addEventListener("error", () => {
+  tvLiveBadge.classList.remove("connecting", "on-air");
+  tvLiveBadge.lastChild.textContent = " Hata";
+  showToast("Bu TV yayını şu anda açılamıyor");
+});
+
+RADIO_STATIONS.forEach(([name, stream]) => {
+  const station = document.createElement("button");
+  station.type = "button";
+  station.className = "station";
+  station.innerHTML = `<b>${name}</b><span>Canlı radyo</span>`;
+  station.addEventListener("click", () => {
+    releaseTrackObjectUrl();
+    activeStation = station;
+    playStream(stream, name);
+  });
+  stationGrid.append(station);
+});
+
+document.getElementById("music-search-form")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("button");
+  const query = document.getElementById("music-query").value.trim();
+  button.disabled = true;
+  searchStatus.textContent = "Şarkı hazırlanıyor; bu işlem kısa bir süre alabilir…";
+  try {
+    const payload = await apiRequest("/api/music/search", {
+      method: "POST",
+      body: JSON.stringify({ query }),
+    });
+    searchStatus.textContent = "Şarkı uygulamaya yükleniyor…";
+    const mediaResponse = await fetch(payload.track.media_url, { cache: "no-store" });
+    if (!mediaResponse.ok) throw new Error("Şarkı dosyası alınamadı.");
+    const audioBlob = await mediaResponse.blob();
+    if (!audioBlob.size || (!audioBlob.type.startsWith("audio/") && audioBlob.type !== "application/octet-stream")) {
+      throw new Error("Geçerli bir ses dosyası alınamadı.");
+    }
+    releaseTrackObjectUrl();
+    trackObjectUrl = URL.createObjectURL(audioBlob.type.startsWith("audio/")
+      ? audioBlob
+      : new Blob([audioBlob], { type: "audio/mpeg" }));
+    activeStation = null;
+    await playStream(trackObjectUrl, payload.track.title);
+    searchStatus.textContent = `${payload.track.channel || "Alem Müzik"} · Uygulama içinde oynatılıyor`;
+  } catch (error) {
+    searchStatus.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById("stop-music")?.addEventListener("click", () => {
+  destroyHls();
+  releaseTrackObjectUrl();
+  player.pause();
+  player.removeAttribute("src");
+  player.load();
+  activeStation?.classList.remove("playing");
+  activeStation = null;
+  trackTitle.textContent = "Bir istasyon veya şarkı seç";
+  liveBadge.classList.remove("connecting", "on-air");
+  liveBadge.lastChild.textContent = " Hazır";
+  haptic();
+});
+
+player?.addEventListener("playing", () => {
+  liveBadge.classList.remove("connecting");
+  liveBadge.classList.add("on-air");
+  liveBadge.lastChild.textContent = " Çalıyor";
+  if ("mediaSession" in navigator && "MediaMetadata" in window) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: trackTitle.textContent,
+      artist: "Alem Müzik Mini App",
+      artwork: [{ src: "./assets/alem-muzik-profile.png", sizes: "512x512", type: "image/png" }],
+    });
+  }
+});
+
+player?.addEventListener("error", () => {
+  liveBadge.classList.remove("connecting", "on-air");
+  liveBadge.lastChild.textContent = " Hata";
+  activeStation?.classList.remove("playing");
+  showToast("Bu yayın şu anda açılamıyor");
+});
+
+const initialTab = location.hash.slice(1);
+if (initialTab) {
+  activateTab(initialTab, false);
+  requestAnimationFrame(() => window.scrollTo(0, 0));
+}
+applyTelegramTheme();
