@@ -112,12 +112,7 @@
             overflow: hidden;
         }
 
-        .song-cover img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
+        .song-cover img { width: 100%; height: 100%; object-fit: cover; }
         .song-details h4 { font-size: 13px; margin-bottom: 2px; }
         .song-details p { font-size: 10px; color: var(--subtext-color); }
 
@@ -188,21 +183,21 @@
             </div>
             
             <div class="player-info">
-                <div class="song-cover" id="song-cover"><i class="fa-solid fa-radio" id="default-icon"></i></div>
+                <div class="song-cover" id="song-cover"><i class="fa-solid fa-music"></i></div>
                 <div class="song-details">
                     <h4 id="song-title">Bir Müzik veya Radyo Seçin</h4>
                     <p id="song-artist">Cio Müzik Player</p>
                 </div>
             </div>
 
-            <!-- HTML5 Doğrudan Oynatıcı -->
+            <!-- Yerel Tarayıcı Oynatıcısı -->
             <audio id="audio-player" controls style="display: block;"></audio>
         </div>
 
         <div class="card">
             <span class="card-title">ŞARKI ARA VE DİNLE</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Şarkı veya şarkıcı adı yazın">
+                <input type="text" id="search-input" placeholder="Şarkı veya sanatçı yazın">
                 <button onclick="searchSong()">Oynat</button>
             </div>
         </div>
@@ -268,32 +263,43 @@
             document.getElementById('song-artist').innerText = query;
 
             try {
-                // Doğrudan HTML tarayıcısı üzerinden çalışan iTunes Müzik API
-                const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=1&country=TR`);
+                // Invidious / Piped API tüneli - Doğrudan ses akışı çeker, CORS ve iframe engellerini aşar
+                const res = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`);
                 const data = await res.json();
 
-                if(data.results && data.results.length > 0) {
-                    const track = data.results[0];
-                    
-                    document.getElementById('song-title').innerText = track.trackName;
-                    document.getElementById('song-artist').innerText = track.artistName;
-                    document.getElementById('player-badge').innerText = "• Çalıyor";
-                    
-                    // Şarkı kapağını yükle
-                    const artworkUrl = track.artworkUrl100 || track.artworkUrl60;
-                    document.getElementById('song-cover').innerHTML = `<img src="${artworkUrl}" alt="Cover">`;
+                if(data.items && data.items.length > 0) {
+                    const item = data.items[0];
+                    const videoId = item.url.split("v=")[1];
 
-                    player.src = track.previewUrl;
-                    player.load();
-                    player.play();
+                    // Ses akış detaylarını al
+                    const streamRes = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
+                    const streamData = await streamRes.json();
+
+                    // Sadece ses (audio) formatlarını filtrele
+                    const audioStreams = streamData.audioStreams;
+                    if(audioStreams && audioStreams.length > 0) {
+                        document.getElementById('song-title').innerText = streamData.title;
+                        document.getElementById('song-artist').innerText = streamData.uploader;
+                        document.getElementById('player-badge').innerText = "• Çalıyor";
+                        
+                        if(streamData.thumbnailUrl) {
+                            document.getElementById('song-cover').innerHTML = `<img src="${streamData.thumbnailUrl}" alt="Cover">`;
+                        }
+
+                        // Doğrudan ses akış URL'sini ver
+                        player.src = audioStreams[0].url;
+                        player.load();
+                        player.play();
+                    } else {
+                        throw new Error("Ses akışı bulunamadı");
+                    }
                 } else {
-                    document.getElementById('song-cover').innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
                     document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
-                    document.getElementById('song-artist').innerText = "Farklı bir kelime deneyin.";
+                    document.getElementById('song-artist').innerText = "Farklı bir isim deneyin.";
                 }
             } catch (err) {
                 document.getElementById('song-title').innerText = "Arama Hatası";
-                document.getElementById('song-artist').innerText = "Bağlantınızı kontrol edin.";
+                document.getElementById('song-artist').innerText = "Tekrar deneyin veya farklı bir şarkı yazın.";
             }
         }
     </script>
