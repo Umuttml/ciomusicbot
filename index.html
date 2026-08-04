@@ -118,7 +118,7 @@
 
         iframe {
             width: 100%;
-            height: 180px;
+            height: 200px;
             border: none;
             border-radius: 12px;
             display: none;
@@ -197,17 +197,17 @@
                 </div>
             </div>
 
-            <!-- Ses Oynatıcı -->
+            <!-- HTML5 Ses Oyuncusu -->
             <audio id="audio-player" controls style="display: block;"></audio>
 
-            <!-- YouTube Oynatıcı (Aramalar için) -->
-            <iframe id="yt-player" allow="autoplay"></iframe>
+            <!-- YouTube Video/Müzik Ekranı -->
+            <iframe id="yt-player" allow="autoplay; encrypted-media"></iframe>
         </div>
 
         <div class="card">
             <span class="card-title">ŞARKI ARA VE DİNLE</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Şarkı adı (örn: Sebebi Var)">
+                <input type="text" id="search-input" placeholder="Şarkı adı yazın (örn: Sebebi Var)">
                 <button onclick="searchSong()">Oynat</button>
             </div>
         </div>
@@ -215,8 +215,8 @@
         <div class="card">
             <span class="card-title">CANLI RADYO İSTASYONLARI</span>
             <div class="radio-grid">
-                <!-- CORS sorunu olmayan kesintisiz doğrudan HTTPS kanalları -->
-                <div class="radio-item" onclick="playRadio('Alem FM', 'https://stream.alemfm.com/alemfm/live/icecast.audio')">
+                <!-- Vercel HTTPS Uyumlu Test Edilmiş Radyo Stream Linkleri -->
+                <div class="radio-item" onclick="playRadio('Alem FM', 'https://listen.radionomy.com/alem-fm')">
                     <h5>Alem FM</h5>
                     <p>Türkçe Pop / Canlı</p>
                 </div>
@@ -250,8 +250,9 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.expand();
+        }
 
         const player = document.getElementById('audio-player');
         const ytPlayer = document.getElementById('yt-player');
@@ -265,7 +266,6 @@
         }
 
         function playRadio(name, url) {
-            // YouTube iframe kapat, audio oyuncuyu aç
             ytPlayer.style.display = "none";
             ytPlayer.src = "";
             player.style.display = "block";
@@ -275,24 +275,30 @@
             document.getElementById('player-badge').innerText = "• Canlı";
             
             player.src = url;
-            player.play().catch(e => console.log("Oynatma hatası:", e));
+            player.load();
+            
+            // Kullanıcı tıkladığı için Autoplay engeline takılmaz
+            player.play().catch(e => {
+                console.log("Oynatma hatası:", e);
+                document.getElementById('song-artist').innerText = "Oynatma başlatılamadı. Tekrar tıklayın.";
+            });
         }
 
         function searchSong() {
             const query = document.getElementById('search-input').value.trim();
             if(!query) return;
 
-            // Audio player kapat, YT Player aç
+            // Audio durdur, YouTube video ekranını aç
             player.pause();
             player.style.display = "none";
             ytPlayer.style.display = "block";
 
             document.getElementById('song-title').innerText = query;
-            document.getElementById('song-artist').innerText = "YouTube Medya Oynatıcı";
+            document.getElementById('song-artist').innerText = "YouTube Çalar";
             document.getElementById('player-badge').innerText = "• Çalıyor";
 
-            // Doğrudan YouTube No-Cookie Embed Arama Altyapısı (API kısıtlamalarına takılmaz)
-            ytPlayer.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
+            // YouTube arama akışı
+            ytPlayer.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
         }
     </script>
 </body>
