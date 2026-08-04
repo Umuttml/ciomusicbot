@@ -116,6 +116,15 @@
 
         audio { width: 100%; height: 32px; margin-top: 4px; }
 
+        iframe {
+            width: 100%;
+            height: 180px;
+            border: none;
+            border-radius: 12px;
+            display: none;
+            margin-top: 8px;
+        }
+
         .search-box { display: flex; gap: 6px; }
         .search-box input {
             flex: 1;
@@ -188,7 +197,11 @@
                 </div>
             </div>
 
-            <audio id="audio-player" controls preload="none"></audio>
+            <!-- Ses Oynatıcı -->
+            <audio id="audio-player" controls style="display: block;"></audio>
+
+            <!-- YouTube Oynatıcı (Aramalar için) -->
+            <iframe id="yt-player" allow="autoplay"></iframe>
         </div>
 
         <div class="card">
@@ -202,7 +215,7 @@
         <div class="card">
             <span class="card-title">CANLI RADYO İSTASYONLARI</span>
             <div class="radio-grid">
-                <!-- Telegram Engeline Takılmayan Doğrudan HTTPS Akışları -->
+                <!-- CORS sorunu olmayan kesintisiz doğrudan HTTPS kanalları -->
                 <div class="radio-item" onclick="playRadio('Alem FM', 'https://stream.alemfm.com/alemfm/live/icecast.audio')">
                     <h5>Alem FM</h5>
                     <p>Türkçe Pop / Canlı</p>
@@ -241,6 +254,7 @@
         tg.expand();
 
         const player = document.getElementById('audio-player');
+        const ytPlayer = document.getElementById('yt-player');
 
         function switchTab(tabName, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -251,65 +265,34 @@
         }
 
         function playRadio(name, url) {
+            // YouTube iframe kapat, audio oyuncuyu aç
+            ytPlayer.style.display = "none";
+            ytPlayer.src = "";
+            player.style.display = "block";
+
             document.getElementById('song-title').innerText = name;
             document.getElementById('song-artist').innerText = "Canlı Radyo Yayını";
             document.getElementById('player-badge').innerText = "• Canlı";
             
             player.src = url;
-            player.load();
-            
-            let playPromise = player.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.log("Oynatma hatası:", error);
-                    document.getElementById('song-artist').innerText = "Oynatma başlatılamadı.";
-                });
-            }
+            player.play().catch(e => console.log("Oynatma hatası:", e));
         }
 
-        async function searchSong() {
+        function searchSong() {
             const query = document.getElementById('search-input').value.trim();
             if(!query) return;
 
-            document.getElementById('song-title').innerText = "Aranıyor...";
-            document.getElementById('song-artist').innerText = query;
+            // Audio player kapat, YT Player aç
+            player.pause();
+            player.style.display = "none";
+            ytPlayer.style.display = "block";
 
-            // Timeout mekanizması (5 saniye cevap gelmezse patlamasın)
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            document.getElementById('song-title').innerText = query;
+            document.getElementById('song-artist').innerText = "YouTube Medya Oynatıcı";
+            document.getElementById('player-badge').innerText = "• Çalıyor";
 
-            try {
-                // Güvenli arama motoru
-                const response = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=1`, {
-                    signal: controller.signal
-                });
-                
-                // Deezer API direkt CORS vermediği için sunucu tüneli
-                const proxyRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=1`)}`);
-                const proxyData = await proxyRes.json();
-                const data = JSON.parse(proxyData.contents);
-
-                clearTimeout(timeoutId);
-
-                if(data && data.data && data.data.length > 0) {
-                    const track = data.data[0];
-
-                    document.getElementById('song-title').innerText = track.title;
-                    document.getElementById('song-artist').innerText = track.artist.name;
-                    document.getElementById('player-badge').innerText = "• Çalıyor";
-
-                    player.src = track.preview; // 30 sn yüksek kaliteli doğrudan MP3 önizleme akışı
-                    player.load();
-                    player.play();
-                } else {
-                    document.getElementById('song-title').innerText = "Şarkı Bulunamadı";
-                    document.getElementById('song-artist').innerText = "Başka bir arama deneyin.";
-                }
-            } catch (err) {
-                clearTimeout(timeoutId);
-                document.getElementById('song-title').innerText = "Arama Zaman Aşımı";
-                document.getElementById('song-artist').innerText = "Bağlantı hatası, tekrar basın.";
-            }
+            // Doğrudan YouTube No-Cookie Embed Arama Altyapısı (API kısıtlamalarına takılmaz)
+            ytPlayer.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
         }
     </script>
 </body>
