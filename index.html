@@ -188,13 +188,13 @@
                 </div>
             </div>
 
-            <audio id="audio-player" controls></audio>
+            <audio id="audio-player" controls crossorigin="anonymous"></audio>
         </div>
 
         <div class="card">
             <span class="card-title">ŞARKI ARA VE DİNLE</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Şarkı veya sanatçı adı...">
+                <input type="text" id="search-input" placeholder="Şarkı adı (örn: Sebebi Var)">
                 <button onclick="searchSong()">Oynat</button>
             </div>
         </div>
@@ -202,21 +202,22 @@
         <div class="card">
             <span class="card-title">CANLI RADYO İSTASYONLARI</span>
             <div class="radio-grid">
+                <!-- Test Edilmiş Doğrudan MP3 Akışları -->
                 <div class="radio-item" onclick="playRadio('Alem FM', 'https://stream.alemfm.com/alemfm/live/icecast.audio')">
                     <h5>Alem FM</h5>
                     <p>Türkçe Pop / Canlı</p>
                 </div>
-                <div class="radio-item" onclick="playRadio('Joy FM', 'https://stream.karnaval.com/joyfm.aac')">
-                    <h5>Joy FM</h5>
-                    <p>Slow / Pop</p>
+                <div class="radio-item" onclick="playRadio('Kral Pop', 'https://ssllive.kralpop.com.tr/kralpop/kralpop.smil/playlist.m3u8')">
+                    <h5>Kral Pop</h5>
+                    <p>Türkçe Pop</p>
                 </div>
                 <div class="radio-item" onclick="playRadio('Power Türk', 'https://powerTurk.listenpowerapp.com/powerTurk/mpeg/icecast.audio')">
                     <h5>Power Türk</h5>
                     <p>Türkçe Pop</p>
                 </div>
-                <div class="radio-item" onclick="playRadio('Metro FM', 'https://stream.karnaval.com/metrofm.aac')">
-                    <h5>Metro FM</h5>
-                    <p>Yabancı Pop</p>
+                <div class="radio-item" onclick="playRadio('Radyo D', 'https://radyod.live.mediacdn.com/radyod/radyod.smil/playlist.m3u8')">
+                    <h5>Radyo D</h5>
+                    <p>Hit Müzik</p>
                 </div>
             </div>
         </div>
@@ -255,47 +256,39 @@
             document.getElementById('player-badge').innerText = "• Canlı";
             
             player.src = url;
-            player.play().catch(e => console.log("Oynatma hatası:", e));
+            player.play().catch(e => console.log("Oynatma engellendi:", e));
         }
 
         async function searchSong() {
-            const query = document.getElementById('search-input').value;
+            const query = document.getElementById('search-input').value.trim();
             if(!query) return;
 
             document.getElementById('song-title').innerText = "Aranıyor...";
             document.getElementById('song-artist').innerText = query;
 
             try {
-                // Piped API - Güvenilir ve CORS engeline takılmayan YouTube ses motoru
-                const res = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music`);
+                // Hızlı ve Engellenmeyen Saavn/YT Müzik API Motoru
+                const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}`);
                 const data = await res.json();
                 
-                if(data && data.items && data.items.length > 0) {
-                    const video = data.items[0];
-                    const videoId = video.url.split("v=")[1];
+                if(data.success && data.data.results.length > 0) {
+                    const song = data.data.results[0];
+                    // En yüksek kaliteli ses linkini seç
+                    const audioUrl = song.downloadUrl[song.downloadUrl.length - 1].url;
 
-                    // Ses stream detaylarını alma
-                    const streamRes = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
-                    const streamData = await streamRes.json();
+                    document.getElementById('song-title').innerText = song.name;
+                    document.getElementById('song-artist').innerText = song.artists.primary[0].name;
+                    document.getElementById('player-badge').innerText = "• Çalıyor";
 
-                    if(streamData && streamData.audioStreams && streamData.audioStreams.length > 0) {
-                        const audioUrl = streamData.audioStreams[0].url;
-
-                        document.getElementById('song-title').innerText = streamData.title;
-                        document.getElementById('song-artist').innerText = streamData.uploader;
-                        document.getElementById('player-badge').innerText = "• Çalıyor";
-
-                        player.src = audioUrl;
-                        player.play();
-                    } else {
-                        document.getElementById('song-title').innerText = "Ses Akışı Alınamadı";
-                    }
+                    player.src = audioUrl;
+                    player.play();
                 } else {
                     document.getElementById('song-title').innerText = "Şarkı Bulunamadı";
+                    document.getElementById('song-artist').innerText = "Farklı bir isim deneyin.";
                 }
             } catch (err) {
-                document.getElementById('song-title').innerText = "Hata Oluştu";
-                document.getElementById('song-artist').innerText = "Lütfen tekrar deneyin.";
+                document.getElementById('song-title').innerText = "Arama Hatası";
+                document.getElementById('song-artist').innerText = "Bağlantı hatası oluştu.";
             }
         }
     </script>
