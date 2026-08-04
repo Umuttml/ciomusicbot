@@ -196,7 +196,7 @@
         <div class="card">
             <span class="card-title">ŞARKI ARA VE DİNLE</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Şarkı adı yazın (Örn: Sebebi Var)">
+                <input type="text" id="search-input" placeholder="Arama yapın (Örn: Rock, Chill, Jazz)">
                 <button id="search-btn" onclick="searchSong()">Oynat</button>
             </div>
         </div>
@@ -230,21 +230,11 @@
     <div id="tab-menu" class="tab-content"><div class="card"><p style="text-align:center;">⚙️ Ayarlar.</p></div></div>
 
     <script>
-        const tg = window.Telegram?.WebApp;
-        if (tg) {
-            tg.expand();
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.expand();
         }
 
-        const API_BASE = "https://api.alemmuzik.com";
         const player = document.getElementById('audio-player');
-        let currentObjectUrl = null;
-
-        function releaseObjectUrl() {
-            if (currentObjectUrl) {
-                URL.revokeObjectURL(currentObjectUrl);
-                currentObjectUrl = null;
-            }
-        }
 
         function switchTab(tabName, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -254,7 +244,6 @@
         }
 
         function playRadio(name, url) {
-            releaseObjectUrl();
             document.getElementById('song-cover').innerHTML = '<i class="fa-solid fa-radio"></i>';
             document.getElementById('song-title').innerText = name;
             document.getElementById('song-artist').innerText = "Canlı Radyo Yayını";
@@ -272,82 +261,39 @@
 
             btn.disabled = true;
             document.getElementById('song-title').innerText = "Aranıyor...";
-            document.getElementById('song-artist').innerText = "Müzik sunucusuna bağlanılıyor...";
+            document.getElementById('song-artist').innerText = query;
 
-            let played = false;
+            try {
+                // Jamendo Açık API - Telegram Mini App engeline takılmaz, doğrudan çalar
+                const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d30c08&format=json&limit=1&search=${encodeURIComponent(query)}`);
+                const data = await res.json();
 
-            // 1. ÖNCE ALEM MÜZİK API DENENİR (Telegram İçi)
-            if (tg && tg.initData) {
-                try {
-                    const response = await fetch(`${API_BASE}/api/music/search`, {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `tma ${tg.initData}`,
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({ query })
-                    });
+                if (data.results && data.results.length > 0) {
+                    const track = data.results[0];
 
-                    if (response.ok) {
-                        const payload = await response.json();
-                        const mediaResponse = await fetch(payload.track.media_url, { cache: "no-store" });
-                        
-                        if (mediaResponse.ok) {
-                            const audioBlob = await mediaResponse.blob();
-                            releaseObjectUrl();
-                            currentObjectUrl = URL.createObjectURL(
-                                audioBlob.type.startsWith("audio/") ? audioBlob : new Blob([audioBlob], { type: "audio/mpeg" })
-                            );
-
-                            document.getElementById('song-title').innerText = payload.track.title;
-                            document.getElementById('song-artist').innerText = payload.track.channel || "Alem Müzik";
-                            document.getElementById('player-badge').innerText = "• Çalıyor";
-
-                            player.src = currentObjectUrl;
-                            player.load();
-                            player.play();
-                            played = true;
-                        }
+                    document.getElementById('song-title').innerText = track.name;
+                    document.getElementById('song-artist').innerText = track.artist_name;
+                    document.getElementById('player-badge').innerText = "• Çalıyor";
+                    
+                    if (track.image) {
+                        document.getElementById('song-cover').innerHTML = `<img src="${track.image}" alt="Cover">`;
+                    } else {
+                        document.getElementById('song-cover').innerHTML = '<i class="fa-solid fa-music"></i>';
                     }
-                } catch (e) {
-                    console.log("Alem Müzik API hatası, yedek API'ye geçiliyor...");
+
+                    player.src = track.audio;
+                    player.load();
+                    player.play();
+                } else {
+                    document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
+                    document.getElementById('song-artist').innerText = "Farklı bir arama yapın.";
                 }
+            } catch (e) {
+                document.getElementById('song-title').innerText = "Bağlantı Hatası";
+                document.getElementById('song-artist').innerText = "Ağınızı kontrol edin.";
+            } finally {
+                btn.disabled = false;
             }
-
-            // 2. EĞER TELEGRAM DIŞINDAYSA VEYA ALEM API HATA VERİRSE: AÇIK KÜTÜPHANE (Jamendo)
-            if (!played) {
-                try {
-                    const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d30c08&format=json&limit=1&search=${encodeURIComponent(query)}`);
-                    const data = await res.json();
-
-                    if (data.results && data.results.length > 0) {
-                        const track = data.results[0];
-                        releaseObjectUrl();
-
-                        document.getElementById('song-title').innerText = track.name;
-                        document.getElementById('song-artist').innerText = track.artist_name;
-                        document.getElementById('player-badge').innerText = "• Çalıyor";
-                        
-                        if (track.image) {
-                            document.getElementById('song-cover').innerHTML = `<img src="${track.image}" alt="Cover">`;
-                        }
-
-                        player.src = track.audio;
-                        player.load();
-                        player.play();
-                        played = true;
-                    }
-                } catch (e) {
-                    console.log("Yedek API hatası");
-                }
-            }
-
-            if (!played) {
-                document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
-                document.getElementById('song-artist').innerText = "Farklı bir arama yapın.";
-            }
-
-            btn.disabled = false;
         }
     </script>
 </body>
