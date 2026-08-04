@@ -173,7 +173,6 @@
         <button class="tab-btn" onclick="switchTab('menu', this)"><i class="fa-solid fa-bars"></i>Menü</button>
     </div>
 
-    <!-- MÜZİK SEKMESİ -->
     <div id="tab-music" class="tab-content active">
         <div class="card">
             <div class="card-header">
@@ -203,27 +202,26 @@
         <div class="card">
             <span class="card-title">CANLI RADYO İSTASYONLARI</span>
             <div class="radio-grid">
-                <div class="radio-item" onclick="playRadio('Kral FM', 'https://ssllive.kralfm.com.tr/kralfm/kralfm.smil/playlist.m3u8')">
-                    <h5>Kral FM</h5>
-                    <p>Arabesk / Canlı</p>
+                <div class="radio-item" onclick="playRadio('Alem FM', 'https://stream.alemfm.com/alemfm/live/icecast.audio')">
+                    <h5>Alem FM</h5>
+                    <p>Türkçe Pop / Canlı</p>
                 </div>
-                <div class="radio-item" onclick="playRadio('Super FM', 'https://stream.karnaval.com/superfm.aac')">
-                    <h5>Super FM</h5>
-                    <p>Türkçe Pop</p>
+                <div class="radio-item" onclick="playRadio('Joy FM', 'https://stream.karnaval.com/joyfm.aac')">
+                    <h5>Joy FM</h5>
+                    <p>Slow / Pop</p>
                 </div>
                 <div class="radio-item" onclick="playRadio('Power Türk', 'https://powerTurk.listenpowerapp.com/powerTurk/mpeg/icecast.audio')">
                     <h5>Power Türk</h5>
                     <p>Türkçe Pop</p>
                 </div>
-                <div class="radio-item" onclick="playRadio('Fenomen Pop', 'https://listen.radiofenomen.com/fenomenpop/128/icecast.audio')">
-                    <h5>Radyo Fenomen</h5>
-                    <p>Hit Müzik</p>
+                <div class="radio-item" onclick="playRadio('Metro FM', 'https://stream.karnaval.com/metrofm.aac')">
+                    <h5>Metro FM</h5>
+                    <p>Yabancı Pop</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- DİĞER SEKMELER (Soru İşareti Olmasın Diye Boş Şablonlar) -->
     <div id="tab-tv" class="tab-content">
         <div class="card"><p style="text-align:center;">📺 Canlı TV yayınları yakında eklenecektir.</p></div>
     </div>
@@ -257,7 +255,7 @@
             document.getElementById('player-badge').innerText = "• Canlı";
             
             player.src = url;
-            player.play();
+            player.play().catch(e => console.log("Oynatma hatası:", e));
         }
 
         async function searchSong() {
@@ -268,22 +266,30 @@
             document.getElementById('song-artist').innerText = query;
 
             try {
-                // Invidious Kamu API üzerinden youtube araması yapıp doğrudan ses linki çeker
-                const res = await fetch(`https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+                // Piped API - Güvenilir ve CORS engeline takılmayan YouTube ses motoru
+                const res = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music`);
                 const data = await res.json();
                 
-                if(data && data.length > 0) {
-                    const videoId = data[0].videoId;
-                    const title = data[0].title;
-                    const author = data[0].author;
+                if(data && data.items && data.items.length > 0) {
+                    const video = data.items[0];
+                    const videoId = video.url.split("v=")[1];
 
-                    document.getElementById('song-title').innerText = title;
-                    document.getElementById('song-artist').innerText = author;
-                    document.getElementById('player-badge').innerText = "• Çalıyor";
+                    // Ses stream detaylarını alma
+                    const streamRes = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
+                    const streamData = await streamRes.json();
 
-                    // Audio Stream Linki
-                    player.src = `https://invidious.nerdvpn.de/latest_version?id=${videoId}&itag=140`;
-                    player.play();
+                    if(streamData && streamData.audioStreams && streamData.audioStreams.length > 0) {
+                        const audioUrl = streamData.audioStreams[0].url;
+
+                        document.getElementById('song-title').innerText = streamData.title;
+                        document.getElementById('song-artist').innerText = streamData.uploader;
+                        document.getElementById('player-badge').innerText = "• Çalıyor";
+
+                        player.src = audioUrl;
+                        player.play();
+                    } else {
+                        document.getElementById('song-title').innerText = "Ses Akışı Alınamadı";
+                    }
                 } else {
                     document.getElementById('song-title').innerText = "Şarkı Bulunamadı";
                 }
