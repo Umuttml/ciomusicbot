@@ -4,7 +4,7 @@ import yt_dlp
 
 app = FastAPI()
 
-# Frontend'inden (Vercel/GitHub Pages) gelen istekleri kabul etmek için CORS izni
+# CORS Ayarları (Frontend'den istek atılabilmesi için şart)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,14 +13,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+# KANSER OLAN KISIM BURASI: Hem GET hem HEAD isteklerine izin veriyoruz
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {"status": "ok", "message": "Cio Müzik API Aktif"}
 
 @app.get("/api/search")
 def search_music(q: str):
     ydl_opts = {
-        'format': 'ba/ba*', # Sadece ses formatını çek
+        'format': 'ba/ba*',
         'quiet': True,
         'no_warnings': True,
         'default_search': 'ytsearch1',
@@ -37,7 +38,7 @@ def search_music(q: str):
                     "title": video.get('title'),
                     "artist": video.get('uploader'),
                     "thumbnail": video.get('thumbnail'),
-                    "url": video.get('url') # Doğrudan MP3 akış URL'si
+                    "url": video.get('url') # Doğrudan MP3 Akış URL'si
                 }
     except Exception as e:
         return {"success": False, "error": str(e)}
