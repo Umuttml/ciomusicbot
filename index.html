@@ -296,41 +296,40 @@
         }
 
         // Kesintisiz YouTube Oynatma Mantığı
-        function playSong() {
+        async function playSong() {
     const query = document.getElementById('search-input').value.trim();
     if(!query) return;
 
-    audioPlayer.pause();
-    audioPlayer.style.display = "none";
+    // Normal ses oynatıcıyı aç, YouTube video kutusunu gizle
+    embedWrapper.style.display = "none";
+    audioPlayer.style.display = "block";
 
-    let videoId = "";
+    document.getElementById('music-title').innerText = "Aranıyor...";
+    document.getElementById('music-artist').innerText = query;
+    document.getElementById('music-badge').innerText = "• Yükleniyor";
 
-    // Link mi yoksa Şarkı Adı mı kontrol et
-    if (query.includes("v=")) {
-        videoId = query.split("v=")[1].split("&")[0];
-    } else if (query.includes("youtu.be/")) {
-        videoId = query.split("youtu.be/")[1].split("?")[0];
-    }
+    try {
+        // Invidious API üzerinden YouTube ses akışını (itag=140 - sadece ses) çekiyoruz
+        const res = await fetch(`https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+        const data = await res.json();
 
-    if (videoId) {
-        // Doğrudan Video ID varsa Iframe İçi Oynat
-        document.getElementById('music-title').innerText = "YouTube Oynatılıyor";
-        document.getElementById('music-artist').innerText = "Cio Müzik Player";
-        document.getElementById('music-badge').innerText = "• Çalıyor";
-        youtubeFrame.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
-        embedWrapper.style.display = "block";
-    } else {
-        // Arama Kelimesi ise YouTube Arama Sayfasını Aç (Engelsiz)
-        document.getElementById('music-title').innerText = query;
-        document.getElementById('music-artist').innerText = "YouTube Arama Sonucu Açılıyor";
-        document.getElementById('music-badge').innerText = "• Yönlendirildi";
-        
-        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-        if (tg?.openLink) {
-            tg.openLink(searchUrl);
+        if (data && data.length > 0) {
+            const video = data[0];
+            
+            document.getElementById('music-title').innerText = video.title;
+            document.getElementById('music-artist').innerText = video.author;
+            document.getElementById('music-badge').innerText = "• Çalıyor";
+
+            // Doğrudan ses akışını HTML5 Audio Player'a yüklüyoruz
+            audioPlayer.src = `https://inv.tux.pizza/latest_version?id=${video.videoId}&itag=140`;
+            audioPlayer.load();
+            audioPlayer.play();
         } else {
-            window.open(searchUrl, '_blank');
+            document.getElementById('music-title').innerText = "Sonuç Bulunamadı";
         }
+    } catch (e) {
+        document.getElementById('music-title').innerText = "Arama Hatası";
+        document.getElementById('music-artist').innerText = "Tekrar deneyin.";
     }
     tg?.HapticFeedback?.impactOccurred?.('medium');
 }
