@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import requests
 import yt_dlp
 
 app = FastAPI()
@@ -18,35 +19,70 @@ def root():
 
 @app.get("/api/search")
 def search_music(q: str):
+    # 1. Aşama: YouTube IP engeline takılmamak için Piped/Invidious API'den Arama Yap
+    search_nodes = [
+        f"https://pipedapi.kavin.rocks/search?q={q}&filter=all",
+        f"https://inv.tux.pizza/api/v1/search?q={q}&type=video"
+    ]
+    
+    video_id = None
+    title = None
+    artist = None
+    thumbnail = None
+
+    for node_url in search_nodes:
+        try:
+            res = requests.get(node_url, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                # Piped Formatı
+                if "items" in data and len(data["items"]) > 0:
+                    for item in data["items"]:
+                        if item.get("type") == "stream":
+                            video_id = item["url"].split("v=")[-1]
+                            title = item.get("title")
+                            artist = item.get("uploaderName")
+                            thumbnail = item.get("thumbnail")
+                            break
+                # Invidious Formatı
+                elif isinstance(data, list) and len(data) > 0:
+                    video_id = data[0].get("videoId")
+                    title = data[0].get("title")
+                    artist = data[0].get("author")
+                    if "videoThumbnails" in data[0] and len(data[0]["videoThumbnails"]) > 0:
+                        thumbnail = data[0]["videoThumbnails"][0].get("url")
+                
+                if video_id:
+                    break
+        except Exception:
+            continue
+
+    # Eğer tünelden Video ID bulunduysa doğrudan URL'sini al
+    target_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else f"ytsearch1:{q}"
+
+    # 2. Aşama: Direct MP3 Stream URL'sini Çek
     ydl_opts = {
         'format': 'ba/ba*',
         'quiet': True,
         'no_warnings': True,
-        'default_search': 'ytsearch1',
         'nocheckcertificate': True,
         'geo_bypass': True,
-        # YouTube IP engellerini aşmak için HTTP başlıkları
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-        }
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f"ytsearch1:{q}", download=False)
-            
-            if info and 'entries' in info and len(info['entries']) > 0:
-                video = info['entries'][0]
-                return {
-                    "success": True,
-                    "title": video.get('title'),
-                    "artist": video.get('uploader'),
-                    "thumbnail": video.get('thumbnail'),
-                    "url": video.get('url')
-                }
+            info = ydl.extract_info(target_url, download=False)
+            if 'entries' in info and len(info['entries']) > 0:
+                info = info['entries'][0]
+
+            return {
+                "success": True,
+                "title": title or info.get('title'),
+                "artist": artist or info.get('uploader'),
+                "thumbnail": thumbnail or info.get('thumbnail'),
+                "url": info.get('url')
+            }
     except Exception as e:
-        print(f"Arama hatası: {str(e)}")
         return {"success": False, "error": str(e)}
-    
+
     return {"success": False, "message": "Şarkı bulunamadı"}
