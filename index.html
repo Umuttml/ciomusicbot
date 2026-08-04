@@ -197,7 +197,7 @@
             <span class="card-title">ŞARKI ARA VE DİNLE</span>
             <div class="search-box">
                 <input type="text" id="search-input" placeholder="Şarkı adı yazın (Örn: Sebebi Var)">
-                <button onclick="searchSong()">Oynat</button>
+                <button id="search-btn" onclick="searchSong()">Oynat</button>
             </div>
         </div>
 
@@ -230,18 +230,21 @@
     <div id="tab-menu" class="tab-content"><div class="card"><p style="text-align:center;">⚙️ Ayarlar.</p></div></div>
 
     <script>
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.expand();
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand();
         }
 
+        const API_BASE = "https://api.alemmuzik.com";
         const player = document.getElementById('audio-player');
+        let currentObjectUrl = null;
 
-        // Güvenilir Invidious API Sunucuları
-        const INVIDIOUS_INSTANCES = [
-            "https://inv.tux.pizza",
-            "https://invidious.nerdvpn.de",
-            "https://iv.melmac.ge"
-        ];
+        function releaseObjectUrl() {
+            if (currentObjectUrl) {
+                URL.revokeObjectURL(currentObjectUrl);
+                currentObjectUrl = null;
+            }
+        }
 
         function switchTab(tabName, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -251,6 +254,7 @@
         }
 
         function playRadio(name, url) {
+            releaseObjectUrl();
             document.getElementById('song-cover').innerHTML = '<i class="fa-solid fa-radio"></i>';
             document.getElementById('song-title').innerText = name;
             document.getElementById('song-artist').innerText = "Canlı Radyo Yayını";
@@ -261,48 +265,67 @@
             player.play().catch(e => console.log("Oynatma hatası:", e));
         }
 
+        // Alem Müzik API İsteği
+        async function apiRequest(path, options = {}) {
+            let initData = tg?.initData || "";
+            
+            const response = await fetch(`${API_BASE}${path}`, {
+                ...options,
+                headers: {
+                    ...(initData ? { Authorization: `tma ${initData}` } : {}),
+                    ...(options.body ? { "Content-Type": "application/json" } : {}),
+                    ...options.headers,
+                },
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || "Şarkı verisi alınamadı.");
+            return payload;
+        }
+
         async function searchSong() {
             const query = document.getElementById('search-input').value.trim();
+            const btn = document.getElementById('search-btn');
             if(!query) return;
 
-            document.getElementById('song-title').innerText = "Aranıyor...";
-            document.getElementById('song-artist').innerText = query;
+            btn.disabled = true;
+            document.getElementById('song-title').innerText = "Hazırlanıyor...";
+            document.getElementById('song-artist').innerText = "Alem Müzik API bekleniyor...";
 
-            let success = false;
+            try {
+                // 1. API'den arama sonucunu al
+                const payload = await apiRequest("/api/music/search", {
+                    method: "POST",
+                    body: JSON.stringify({ query }),
+                });
 
-            // Sunuculardan biri yanıt verene kadar sırayla dener (Yedekli Yapı)
-            for (const instance of INVIDIOUS_INSTANCES) {
-                try {
-                    const res = await fetch(`${instance}/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
-                    const data = await res.json();
+                document.getElementById('song-title').innerText = "İndiriliyor...";
 
-                    if (data && data.length > 0) {
-                        const video = data[0];
-                        
-                        document.getElementById('song-title').innerText = video.title;
-                        document.getElementById('song-artist').innerText = video.author;
-                        document.getElementById('player-badge').innerText = "• Çalıyor";
+                // 2. MP3 dosyasını doğrudan çek
+                const mediaResponse = await fetch(payload.track.media_url, { cache: "no-store" });
+                if (!mediaResponse.ok) throw new Error("Ses dosyası indirilemedi.");
+                
+                const audioBlob = await mediaResponse.blob();
+                
+                // 3. Blob nesnesi oluşturup oynatıcıya bağla
+                releaseObjectUrl();
+                currentObjectUrl = URL.createObjectURL(
+                    audioBlob.type.startsWith("audio/") ? audioBlob : new Blob([audioBlob], { type: "audio/mpeg" })
+                );
 
-                        if (video.videoThumbnails && video.videoThumbnails.length > 0) {
-                            document.getElementById('song-cover').innerHTML = `<img src="${video.videoThumbnails[0].url}" alt="Cover">`;
-                        }
+                document.getElementById('song-title').innerText = payload.track.title;
+                document.getElementById('song-artist').innerText = payload.track.channel || "Cio Müzik Stream";
+                document.getElementById('player-badge').innerText = "• Çalıyor";
 
-                        // Doğrudan Invidious ses akış adresi (Şarkının TAMAMI)
-                        player.src = `${instance}/latest_version?id=${video.videoId}&itag=140`;
-                        player.load();
-                        player.play();
-                        
-                        success = true;
-                        break;
-                    }
-                } catch (err) {
-                    console.log(`${instance} bağlantı hatası, sonraki deneniyor...`);
-                }
-            }
+                player.src = currentObjectUrl;
+                player.load();
+                player.play();
 
-            if (!success) {
-                document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
-                document.getElementById('song-artist').innerText = "Tekrar Oynat'a basın veya farklı arama yapın.";
+            } catch (err) {
+                document.getElementById('song-title').innerText = "Arama Hatası";
+                document.getElementById('song-artist').innerText = err.message || "Telegram Mini App üzerinden açın.";
+            } finally {
+                btn.disabled = false;
             }
         }
     </script>
