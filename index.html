@@ -297,34 +297,43 @@
 
         // Kesintisiz YouTube Oynatma Mantığı
         function playSong() {
-            const query = document.getElementById('search-input').value.trim();
-            if(!query) return;
+    const query = document.getElementById('search-input').value.trim();
+    if(!query) return;
 
-            // Radyo sesini durdur
-            audioPlayer.pause();
-            audioPlayer.style.display = "none";
+    audioPlayer.pause();
+    audioPlayer.style.display = "none";
 
-            document.getElementById('music-title').innerText = query;
-            document.getElementById('music-artist').innerText = "YouTube Oynatılıyor";
-            document.getElementById('music-badge').innerText = "• Çalıyor";
+    let videoId = "";
 
-            // Eğer doğrudan YouTube video ID veya Link girildiyse
-            let videoId = query;
-            if (query.includes("v=")) {
-                videoId = query.split("v=")[1].split("&")[0];
-            } else if (query.includes("youtu.be/")) {
-                videoId = query.split("youtu.be/")[1].split("?")[0];
-            } else {
-                // Arama sorgusu ise YouTube search tüneli üzerinden açar
-                youtubeFrame.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
-                embedWrapper.style.display = "block";
-                return;
-            }
+    // Link mi yoksa Şarkı Adı mı kontrol et
+    if (query.includes("v=")) {
+        videoId = query.split("v=")[1].split("&")[0];
+    } else if (query.includes("youtu.be/")) {
+        videoId = query.split("youtu.be/")[1].split("?")[0];
+    }
 
-            youtubeFrame.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
-            embedWrapper.style.display = "block";
-            tg?.HapticFeedback?.impactOccurred?.('medium');
+    if (videoId) {
+        // Doğrudan Video ID varsa Iframe İçi Oynat
+        document.getElementById('music-title').innerText = "YouTube Oynatılıyor";
+        document.getElementById('music-artist').innerText = "Cio Müzik Player";
+        document.getElementById('music-badge').innerText = "• Çalıyor";
+        youtubeFrame.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+        embedWrapper.style.display = "block";
+    } else {
+        // Arama Kelimesi ise YouTube Arama Sayfasını Aç (Engelsiz)
+        document.getElementById('music-title').innerText = query;
+        document.getElementById('music-artist').innerText = "YouTube Arama Sonucu Açılıyor";
+        document.getElementById('music-badge').innerText = "• Yönlendirildi";
+        
+        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+        if (tg?.openLink) {
+            tg.openLink(searchUrl);
+        } else {
+            window.open(searchUrl, '_blank');
         }
+    }
+    tg?.HapticFeedback?.impactOccurred?.('medium');
+}
 
         // Izgara listelerini oluştur
         const radioGrid = document.getElementById('radio-grid');
