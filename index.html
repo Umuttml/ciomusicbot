@@ -2,56 +2,312 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cio Müzik</title>
-    <!-- Telegram SDK -->
+    <!-- FontAwesome İkonları -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-color: #0b132b;
+            --card-bg: #1c2541;
+            --card-border: #2a385b;
+            --accent-color: #00f5d4;
+            --text-color: #ffffff;
+            --subtext-color: #8d99ae;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
         body {
-            background: linear-gradient(135deg, #0f172a, #1e293b);
-            color: white;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 100vh;
+        }
+
+        /* Üst Banner */
+        .banner {
+            background: linear-gradient(135deg, #1c2541, #3a506b);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid var(--card-border);
+        }
+
+        .banner-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 245, 212, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--accent-color);
+        }
+
+        .banner-text h3 {
+            font-size: 16px;
+            color: var(--accent-color);
+        }
+
+        .banner-text p {
+            font-size: 12px;
+            color: var(--subtext-color);
+            margin-top: 2px;
+        }
+
+        /* Navigasyon Menüsü */
+        .nav-tabs {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            background: var(--card-bg);
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--subtext-color);
+            padding: 8px 0;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
+            gap: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: 0.2s;
         }
+
+        .tab-btn i { font-size: 16px; }
+
+        .tab-btn.active {
+            background: rgba(0, 245, 212, 0.15);
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        /* Kartlar */
         .card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 25px;
-            width: 100%;
-            max-width: 360px;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
-        h1 { font-size: 22px; margin-bottom: 8px; color: #38bdf8; }
-        p { font-size: 14px; color: #94a3b8; margin-bottom: 20px; }
-        audio { width: 100%; margin-top: 10px; border-radius: 10px; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 12px;
+            color: var(--subtext-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge {
+            background: #ef233c;
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        /* Oynatıcı Kartı */
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .song-cover {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-color);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0b132b;
+            font-size: 20px;
+        }
+
+        .song-details h4 {
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .song-details p {
+            font-size: 11px;
+            color: var(--subtext-color);
+        }
+
+        audio {
+            width: 100%;
+            height: 36px;
+            margin-top: 4px;
+        }
+
+        /* Arama Kutusu */
+        .search-box {
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-box input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--card-border);
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: white;
+            outline: none;
+            font-size: 13px;
+        }
+
+        .search-box button {
+            background: var(--accent-color);
+            color: #0b132b;
+            border: none;
+            padding: 0 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Radyo Listesi Grid */
+        .radio-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .radio-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .radio-item:active {
+            transform: scale(0.98);
+        }
+
+        .radio-item h5 { font-size: 13px; }
+        .radio-item p { font-size: 10px; color: var(--subtext-color); }
     </style>
 </head>
 <body>
 
+    <!-- Header Banner -->
+    <div class="banner">
+        <div class="banner-icon"><i class="fa-solid fa-music"></i></div>
+        <div class="banner-text">
+            <h3>Cio Müzik & Eğlence</h3>
+            <p>Müziğini aç, radyo dinle veya oyun oyna.</p>
+        </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="nav-tabs">
+        <button class="tab-btn active"><i class="fa-solid fa-music"></i>Müzik</button>
+        <button class="tab-btn"><i class="fa-solid fa-tv"></i>TV</button>
+        <button class="tab-btn"><i class="fa-solid fa-chess"></i>Satranç</button>
+        <button class="tab-btn"><i class="fa-solid fa-dice"></i>Ludo</button>
+        <button class="tab-btn"><i class="fa-solid fa-bars"></i>Menü</button>
+    </div>
+
+    <!-- Canlı Yayın Player -->
     <div class="card">
-        <h1>🎵 Cio Müzik & Radyo</h1>
-        <p>Canlı Yayın Başlatıldı</p>
+        <div class="card-header">
+            <span class="card-title">CANLI YAYIN</span>
+            <span class="badge">• Çalıyor</span>
+        </div>
         
-        <!-- Örnek Canlı Radyo Akışı -->
-        <audio controls autoplay>
+        <div class="player-info">
+            <div class="song-cover"><i class="fa-solid fa-compact-disc"></i></div>
+            <div class="song-details">
+                <h4 id="station-name">Alem FM</h4>
+                <p id="station-sub">Canlı Radyo Yayını</p>
+            </div>
+        </div>
+
+        <audio id="audio-player" controls autoplay>
             <source src="https://stream.alemfm.com/alemfm/live/icecast.audio" type="audio/mpeg">
-            Tarayıcınız ses ögesini desteklemiyor.
         </audio>
     </div>
 
+    <!-- Arama Bölümü -->
+    <div class="card">
+        <span class="card-title">Şarkı Ara ve Dinle</span>
+        <div class="search-box">
+            <input type="text" placeholder="Şarkı veya sanatçı adı...">
+            <button>Oynat</button>
+        </div>
+    </div>
+
+    <!-- İstasyonlar -->
+    <div class="card">
+        <span class="card-title">Popüler Radyo İstasyonları</span>
+        <div class="radio-grid">
+            <div class="radio-item" onclick="playRadio('Alem FM', 'https://stream.alemfm.com/alemfm/live/icecast.audio')">
+                <h5>Alem FM</h5>
+                <p>Canlı Radyo</p>
+            </div>
+            <div class="radio-item" onclick="playRadio('Joy FM', 'https://stream.karnaval.com/joyfm.aac')">
+                <h5>Joy FM</h5>
+                <p>Slow / Pop</p>
+            </div>
+            <div class="radio-item" onclick="playRadio('Power Türk', 'https://powerTurk.listenpowerapp.com/powerTurk/mpeg/icecast.audio')">
+                <h5>Power Türk</h5>
+                <p>Türkçe Pop</p>
+            </div>
+            <div class="radio-item" onclick="playRadio('Metro FM', 'https://stream.karnaval.com/metrofm.aac')">
+                <h5>Metro FM</h5>
+                <p>Yabancı Pop</p>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Telegram ekranını genişletir
+        // Telegram API
         const tg = window.Telegram.WebApp;
         tg.expand();
+
+        // Radyo değiştirme fonksiyonu
+        function playRadio(name, url) {
+            const player = document.getElementById('audio-player');
+            document.getElementById('station-name').innerText = name;
+            player.src = url;
+            player.play();
+        }
     </script>
 </body>
 </html>
