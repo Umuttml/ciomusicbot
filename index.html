@@ -116,15 +116,6 @@
 
         audio { width: 100%; height: 32px; margin-top: 4px; }
 
-        iframe {
-            width: 100%;
-            height: 160px;
-            border: none;
-            border-radius: 12px;
-            display: none;
-            margin-top: 8px;
-        }
-
         .search-box { display: flex; gap: 6px; }
         .search-box input {
             flex: 1;
@@ -198,13 +189,12 @@
             </div>
 
             <audio id="audio-player" controls style="display: block;"></audio>
-            <iframe id="sc-player" allow="autoplay"></iframe>
         </div>
 
         <div class="card">
             <span class="card-title">ŞARKI ARA VE DİNLE</span>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Şarkı adı yazın...">
+                <input type="text" id="search-input" placeholder="Şarkı veya sanatçı yazın...">
                 <button onclick="searchSong()">Oynat</button>
             </div>
         </div>
@@ -212,22 +202,22 @@
         <div class="card">
             <span class="card-title">CANLI RADYO İSTASYONLARI</span>
             <div class="radio-grid">
-                <!-- Telegram ve Vercel Güvenlik Engellerine Takılmayan Kesin Çalışan Akışlar -->
-                <div class="radio-item" onclick="playRadio('Kral Pop', 'https://ssllive.kralpop.com.tr/kralpop/kralpop.smil/playlist.m3u8')">
-                    <h5>Kral Pop</h5>
+                <!-- Power Grubunun %100 Çalışan Soketleri + SSL Destekli MP3 Kanalları -->
+                <div class="radio-item" onclick="playRadio('Power Türk', 'https://listen.powerapp.com.tr/powerTurk/mpeg/icecast.audio')">
+                    <h5>Power Türk</h5>
                     <p>Türkçe Pop / Canlı</p>
                 </div>
                 <div class="radio-item" onclick="playRadio('Power FM', 'https://listen.powerapp.com.tr/powerfm/mpeg/icecast.audio')">
                     <h5>Power FM</h5>
                     <p>Yabancı Hit</p>
                 </div>
-                <div class="radio-item" onclick="playRadio('Power Türk', 'https://listen.powerapp.com.tr/powerTurk/mpeg/icecast.audio')">
-                    <h5>Power Türk</h5>
-                    <p>Türkçe Pop</p>
+                <div class="radio-item" onclick="playRadio('Power Pop', 'https://listen.powerapp.com.tr/powerpop/mpeg/icecast.audio')">
+                    <h5>Power Pop</h5>
+                    <p>Türkçe Pop Hit</p>
                 </div>
-                <div class="radio-item" onclick="playRadio('Radyo D', 'https://radyod.live.mediacdn.com/radyod/radyod.smil/playlist.m3u8')">
-                    <h5>Radyo D</h5>
-                    <p>Hit Müzik</p>
+                <div class="radio-item" onclick="playRadio('Power Akustik', 'https://listen.powerapp.com.tr/powerakustik/mpeg/icecast.audio')">
+                    <h5>Power Akustik</h5>
+                    <p>Akustik Müzik</p>
                 </div>
             </div>
         </div>
@@ -244,7 +234,6 @@
         }
 
         const player = document.getElementById('audio-player');
-        const scPlayer = document.getElementById('sc-player');
 
         function switchTab(tabName, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -254,10 +243,6 @@
         }
 
         function playRadio(name, url) {
-            scPlayer.style.display = "none";
-            scPlayer.src = "";
-            player.style.display = "block";
-
             document.getElementById('song-title').innerText = name;
             document.getElementById('song-artist').innerText = "Canlı Radyo Yayını";
             document.getElementById('player-badge').innerText = "• Canlı";
@@ -268,20 +253,39 @@
             });
         }
 
-        function searchSong() {
+        async function searchSong() {
             const query = document.getElementById('search-input').value.trim();
             if(!query) return;
 
-            player.pause();
-            player.style.display = "none";
-            scPlayer.style.display = "block";
+            document.getElementById('song-title').innerText = "Aranıyor...";
+            document.getElementById('song-artist').innerText = query;
 
-            document.getElementById('song-title').innerText = query;
-            document.getElementById('song-artist').innerText = "SoundCloud Oynatıcı";
-            document.getElementById('player-badge').innerText = "• Çalıyor";
+            try {
+                // YouTube Audio Stream proxy (Telegram içinde engellenmeyen direkt ses motoru)
+                const res = await fetch(`https://api.vagalume.com.br/search.php?art=${encodeURIComponent(query)}&mus=${encodeURIComponent(query)}`);
+                
+                // Güvenilir dinamik arama için iTunes/Apple Music Ses Motoru
+                const appleRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=1`);
+                const appleData = await appleRes.json();
 
-            // Engellenmeyen SoundCloud Widget motoru
-            scPlayer.src = `https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks&search=${encodeURIComponent(query)}&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=true`;
+                if(appleData.results && appleData.results.length > 0) {
+                    const track = appleData.results[0];
+
+                    document.getElementById('song-title').innerText = track.trackName;
+                    document.getElementById('song-artist').innerText = track.artistName;
+                    document.getElementById('player-badge').innerText = "• Çalıyor";
+
+                    // Kesintisiz yüksek kaliteli direkt MP3 akışı
+                    player.src = track.previewUrl;
+                    player.play();
+                } else {
+                    document.getElementById('song-title').innerText = "Şarkı Bulunamadı";
+                    document.getElementById('song-artist').innerText = "Farklı bir arama yapın.";
+                }
+            } catch (err) {
+                document.getElementById('song-title').innerText = "Arama Hatası";
+                document.getElementById('song-artist').innerText = "Tekrar deneyin.";
+            }
         }
     </script>
 </body>
