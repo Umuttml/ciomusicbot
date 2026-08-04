@@ -265,68 +265,89 @@
             player.play().catch(e => console.log("Oynatma hatası:", e));
         }
 
-        // Alem Müzik API İsteği
-        async function apiRequest(path, options = {}) {
-            let initData = tg?.initData || "";
-            
-            const response = await fetch(`${API_BASE}${path}`, {
-                ...options,
-                headers: {
-                    ...(initData ? { Authorization: `tma ${initData}` } : {}),
-                    ...(options.body ? { "Content-Type": "application/json" } : {}),
-                    ...options.headers,
-                },
-            });
-
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(payload.message || "Şarkı verisi alınamadı.");
-            return payload;
-        }
-
         async function searchSong() {
             const query = document.getElementById('search-input').value.trim();
             const btn = document.getElementById('search-btn');
             if(!query) return;
 
             btn.disabled = true;
-            document.getElementById('song-title').innerText = "Hazırlanıyor...";
-            document.getElementById('song-artist').innerText = "Alem Müzik API bekleniyor...";
+            document.getElementById('song-title').innerText = "Aranıyor...";
+            document.getElementById('song-artist').innerText = "Müzik sunucusuna bağlanılıyor...";
 
-            try {
-                // 1. API'den arama sonucunu al
-                const payload = await apiRequest("/api/music/search", {
-                    method: "POST",
-                    body: JSON.stringify({ query }),
-                });
+            let played = false;
 
-                document.getElementById('song-title').innerText = "İndiriliyor...";
+            // 1. ÖNCE ALEM MÜZİK API DENENİR (Telegram İçi)
+            if (tg && tg.initData) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/music/search`, {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `tma ${tg.initData}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ query })
+                    });
 
-                // 2. MP3 dosyasını doğrudan çek
-                const mediaResponse = await fetch(payload.track.media_url, { cache: "no-store" });
-                if (!mediaResponse.ok) throw new Error("Ses dosyası indirilemedi.");
-                
-                const audioBlob = await mediaResponse.blob();
-                
-                // 3. Blob nesnesi oluşturup oynatıcıya bağla
-                releaseObjectUrl();
-                currentObjectUrl = URL.createObjectURL(
-                    audioBlob.type.startsWith("audio/") ? audioBlob : new Blob([audioBlob], { type: "audio/mpeg" })
-                );
+                    if (response.ok) {
+                        const payload = await response.json();
+                        const mediaResponse = await fetch(payload.track.media_url, { cache: "no-store" });
+                        
+                        if (mediaResponse.ok) {
+                            const audioBlob = await mediaResponse.blob();
+                            releaseObjectUrl();
+                            currentObjectUrl = URL.createObjectURL(
+                                audioBlob.type.startsWith("audio/") ? audioBlob : new Blob([audioBlob], { type: "audio/mpeg" })
+                            );
 
-                document.getElementById('song-title').innerText = payload.track.title;
-                document.getElementById('song-artist').innerText = payload.track.channel || "Cio Müzik Stream";
-                document.getElementById('player-badge').innerText = "• Çalıyor";
+                            document.getElementById('song-title').innerText = payload.track.title;
+                            document.getElementById('song-artist').innerText = payload.track.channel || "Alem Müzik";
+                            document.getElementById('player-badge').innerText = "• Çalıyor";
 
-                player.src = currentObjectUrl;
-                player.load();
-                player.play();
-
-            } catch (err) {
-                document.getElementById('song-title').innerText = "Arama Hatası";
-                document.getElementById('song-artist').innerText = err.message || "Telegram Mini App üzerinden açın.";
-            } finally {
-                btn.disabled = false;
+                            player.src = currentObjectUrl;
+                            player.load();
+                            player.play();
+                            played = true;
+                        }
+                    }
+                } catch (e) {
+                    console.log("Alem Müzik API hatası, yedek API'ye geçiliyor...");
+                }
             }
+
+            // 2. EĞER TELEGRAM DIŞINDAYSA VEYA ALEM API HATA VERİRSE: AÇIK KÜTÜPHANE (Jamendo)
+            if (!played) {
+                try {
+                    const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d30c08&format=json&limit=1&search=${encodeURIComponent(query)}`);
+                    const data = await res.json();
+
+                    if (data.results && data.results.length > 0) {
+                        const track = data.results[0];
+                        releaseObjectUrl();
+
+                        document.getElementById('song-title').innerText = track.name;
+                        document.getElementById('song-artist').innerText = track.artist_name;
+                        document.getElementById('player-badge').innerText = "• Çalıyor";
+                        
+                        if (track.image) {
+                            document.getElementById('song-cover').innerHTML = `<img src="${track.image}" alt="Cover">`;
+                        }
+
+                        player.src = track.audio;
+                        player.load();
+                        player.play();
+                        played = true;
+                    }
+                } catch (e) {
+                    console.log("Yedek API hatası");
+                }
+            }
+
+            if (!played) {
+                document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
+                document.getElementById('song-artist').innerText = "Farklı bir arama yapın.";
+            }
+
+            btn.disabled = false;
         }
     </script>
 </body>
