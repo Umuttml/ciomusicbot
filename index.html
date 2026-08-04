@@ -214,59 +214,63 @@
         }
 
         // YouTube Doğru Şarkı Eşleşme Arama Motoru
-        async function searchSong() {
-            const query = document.getElementById('search-input').value.trim();
-            const btn = document.getElementById('search-btn');
-            if(!query) return;
+        // YouTube Doğru Şarkı Eşleşme Arama Motoru (Invidious Node'ları)
+async function searchSong() {
+    const query = document.getElementById('search-input').value.trim();
+    const btn = document.getElementById('search-btn');
+    if(!query) return;
 
-            btn.disabled = true;
-            document.getElementById('song-title').innerText = "Şarkı Aranıyor...";
-            document.getElementById('song-artist').innerText = query;
+    btn.disabled = true;
+    document.getElementById('song-title').innerText = "Şarkı Aranıyor...";
+    document.getElementById('song-artist').innerText = query;
+    document.getElementById('player-badge').innerText = "• Yükleniyor";
 
-            // Invidious Çalışan API Node Listesi (YouTube Verisini Doğrudan Alır)
-            const NODES = [
-                "https://inv.tux.pizza",
-                "https://invidious.nerdvpn.de",
-                "https://invidious.drgns.space"
-            ];
+    // Çalışan halka açık node'lar
+    const NODES = [
+        "https://inv.tux.pizza",
+        "https://invidious.nerdvpn.de",
+        "https://invidious.drgns.space"
+    ];
 
-            let success = false;
+    let success = false;
 
-            for (let node of NODES) {
-                try {
-                    const res = await fetch(`${node}/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
-                    const data = await res.json();
+    for (let node of NODES) {
+        try {
+            const res = await fetch(`${node}/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+            const data = await res.json();
 
-                    if (data && data.length > 0) {
-                        const video = data[0]; // Doğrudan YouTube'daki 1. sonucu alır
+            if (data && data.length > 0) {
+                const video = data[0]; // Doğrudan aratılan şarkının ilk sonucunu alır
 
-                        document.getElementById('song-title').innerText = video.title;
-                        document.getElementById('song-artist').innerText = video.author;
-                        document.getElementById('player-badge').innerText = "• Çalıyor";
+                document.getElementById('song-title').innerText = video.title;
+                document.getElementById('song-artist').innerText = video.author;
+                document.getElementById('player-badge').innerText = "• Çalıyor";
 
-                        if (video.videoThumbnails && video.videoThumbnails.length > 0) {
-                            document.getElementById('song-cover').innerHTML = `<img src="${video.videoThumbnails[0].url}">`;
-                        }
-
-                        // Doğrudan Ses Stream Linki
-                        player.src = `${node}/latest_version?id=${video.videoId}&itag=140`;
-                        player.load();
-                        player.play();
-
-                        success = true;
-                        break;
-                    }
-                } catch (e) {
-                    console.log(`Node hatası (${node}):`, e);
+                if (video.videoThumbnails && video.videoThumbnails.length > 0) {
+                    document.getElementById('song-cover').innerHTML = `<img src="${video.videoThumbnails[0].url}">`;
                 }
-            }
 
-            if (!success) {
-                document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
-                document.getElementById('song-artist').innerText = "Tekrar deneyin.";
-            }
+                // Doğrudan ses akışını oyuncuya yükler
+                player.src = `${node}/latest_version?id=${video.videoId}&itag=140`;
+                player.load();
+                player.play();
 
-            btn.disabled = false;
+                success = true;
+                break;
+            }
+        } catch (e) {
+            console.log(`Node yanıt vermedi (${node}), diğeri deneniyor...`);
+        }
+    }
+
+    if (!success) {
+        document.getElementById('song-title').innerText = "Sonuç Bulunamadı";
+        document.getElementById('song-artist').innerText = "Lütfen tekrar deneyin.";
+        document.getElementById('player-badge').innerText = "• Hata";
+    }
+
+    btn.disabled = false;
+};
         }
     </script>
 </body>
